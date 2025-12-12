@@ -11,7 +11,7 @@ import com.qualcomm.robotcore.hardware.Servo;
 import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.Pose3D;
 import org.firstinspires.ftc.teamcode.datatypes.Point;
-import org.firstinspires.ftc.teamcode.util.AprilTag;
+import org.firstinspires.ftc.teamcode.tools.AprilTag;
 
 import java.util.Arrays;
 import java.util.List;
