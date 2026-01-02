@@ -13,5 +13,4 @@ public class Constants {
     //public static String[] MOTOR_MAP = {"backRight", "backLeft", "frontRight", "frontLeft"};
     Map<String, Integer> map = new HashMap<String, Integer>()
     {{put("backRight", 0);}};
-
 }
