@@ -11,7 +11,7 @@ import com.qualcomm.robotcore.hardware.Servo;
 import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.Pose3D;
 import org.firstinspires.ftc.teamcode.datatypes.Point;
-import org.firstinspires.ftc.teamcode.tools.AprilTag;
+import org.firstinspires.ftc.teamcode.tools.tag;
 
 import java.util.Arrays;
 import java.util.List;
@@ -62,19 +62,19 @@ public class AprilTagTest extends OpMode{
             Pose3D botpose = llresult.getBotpose();
             Pose3D botpose_mt2 = llresult.getBotpose_MT2();
 
-            Point mt1_postion = AprilTag.getPosition(botpose);
-            Point mt2_position = AprilTag.getPosition(botpose_mt2);
+            Point mt1_postion = tag.getPosition(botpose);
+            Point mt2_position = tag.getPosition(botpose_mt2);
 
-            int tagID = AprilTag.getTagID(results);
-            motif = AprilTag.getMotif(tagID);
+            int tagID = tag.getTagID(results);
+            motif = tag.getMotif(tagID);
             double Tx = llresult.getTx();
             double Ty = llresult.getTy();
             double Ta = llresult.getTa();
-            double distance = AprilTag.getDistance(mountAngle, Ty, LmHeight, TagHeight);
+            double distance = tag.getDistance(mountAngle, Ty, LmHeight, TagHeight);
 
             DistanceUnit unit = botpose.getPosition().unit;
 
-            AprilTag.trackTag(turn, trackSpeed, Tx);
+            tag.trackTag(turn, trackSpeed, Tx);
 
             telemetry.addData("April Tag ", tagID);
             telemetry.addData("Target x", Tx);

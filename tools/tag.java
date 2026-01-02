@@ -12,15 +12,15 @@ import org.firstinspires.ftc.teamcode.datatypes.Point;
 
 import java.util.List;
 
-public class AprilTag {
+public class tag {
     static private Limelight3A limelight;
     private IMU imu;
 
     private ColorSensor color;
     public enum Alliance {BLUE, RED}
 
-    public static YawPitchRollAngles getOrientation(IMU imu) {
-        return imu.getRobotYawPitchRollAngles();
+
+    public static YawPitchRollAngles getOrientation(IMU imu) { return imu.getRobotYawPitchRollAngles();
     }
     public static int getTagID(List<LLResultTypes.FiducialResult> results) {
         int id = 0;
@@ -102,18 +102,4 @@ public class AprilTag {
     public static boolean isAlignedwithTaget(double tx, double tolerance) {
         return Math.abs(tx) <= tolerance;
     }
-
-    public static int[] detectColor(ColorSensor color) {
-        return new int[]{color.red(), color.green(), color.blue()};
-    }
-
-    public static String getColor(int[] rgbValues) {
-        if (rgbValues[1] > rgbValues[0] && rgbValues[1] > rgbValues[2]) {
-            return "G";
-        }
-        else {
-            return "P";
-        }
-    }
-
 }

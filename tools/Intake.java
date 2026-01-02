@@ -1,0 +1,38 @@
+package org.firstinspires.ftc.teamcode.tools;
+
+import com.qualcomm.robotcore.hardware.DcMotor;
+import com.qualcomm.robotcore.util.ElapsedTime;
+
+
+public class Intake {
+    private static DcMotor intake;
+    private static ElapsedTime runtime = new ElapsedTime();
+
+    public static void init(DcMotor motor) {
+       intake = motor;
+    }
+
+    public static void intakeBall(double power, double spinTime) {
+       double startTime = runtime.seconds();
+       while (runtime.seconds() < (startTime+spinTime)) {
+          intake.setPower(power);
+       }
+       intake.setPower(0);
+    }
+    public static void intakeBall(double power, Color sensor) {
+       while (sensor.getColor() == null) {
+           intake.setPower(power);
+       }
+       intake.setPower(0);
+       //turn sorter
+    }
+    public static void intakeBall(double power, Color sensor, Sorter sort) {
+        while (sensor.getColor() == null) {
+            intake.setPower(power);
+        }
+        intake.setPower(0);
+        //turn sorter
+        Sorter.turn(1);
+        Sorter.updatePorts(sensor.getColor());
+    }
+}

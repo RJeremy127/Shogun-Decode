@@ -21,6 +21,9 @@ public class Actuation {
         RobotMovement.setup(startPose, t);
     }
 
+    //axial = x, vertical
+    //lateral = y
+    // yaw = heading
     public static void drive(double axial, double lateral, double yaw) {
         double max;
         double leftFrontPower  = axial + lateral+yaw;
