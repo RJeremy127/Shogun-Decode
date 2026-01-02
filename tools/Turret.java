@@ -1,18 +1,17 @@
 package org.firstinspires.ftc.teamcode.tools;
 
 import com.qualcomm.robotcore.hardware.DcMotor;
+import com.qualcomm.robotcore.hardware.HardwareMap;
 
 public class Turret {
     private static DcMotor motor;
     private static int maxTicks = 2150;
-    private static int ticks;
-    private static double motorPower;
+    private static int ticks = 700;
+    private static double motorPower = 0.4;
     private static int target = 0;
 
-    public static void init(DcMotor mt, int ticksPerRevolution, double power) {
-        motor = mt;
-        ticks = ticksPerRevolution;
-        motorPower = power;
+    public static void init(HardwareMap map) {
+        motor = map.get(DcMotor.class, "turnTable");
     }
     public static void turn(int ticks) {
         target += ticks;

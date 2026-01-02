@@ -9,16 +9,26 @@ import org.firstinspires.ftc.robotcore.external.Telemetry;
 import org.firstinspires.ftc.teamcode.PurePursuit.RobotMovement;
 import org.firstinspires.ftc.teamcode.control.Odometry;
 import org.firstinspires.ftc.teamcode.datatypes.Pose;
+import org.firstinspires.ftc.teamcode.tools.Intake;
+import org.firstinspires.ftc.teamcode.tools.Sorter;
+import org.firstinspires.ftc.teamcode.tools.Tickle;
+import org.firstinspires.ftc.teamcode.tools.Turret;
 
 public class Actuation {
     private static DcMotor[] motors;
     public static Odometry otto;
+
 
     public static void setup(HardwareMap map, Pose startPose, Telemetry t) { // Initialize other things as well
          motors = HardwareMapper.getMotors(map);
          otto = new Odometry(new DcMotor[] {motors[1], motors[2], motors[0]});
          otto.resetEncoders();
         RobotMovement.setup(startPose, t);
+
+        Intake.init(map);
+        Sorter.init(map);
+        Turret.init(map);
+        Tickle.init(map);
     }
 
     //axial = x, vertical

@@ -1,5 +1,6 @@
 package org.firstinspires.ftc.teamcode.tools;
 
+import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.qualcomm.robotcore.hardware.Servo;
 
 public class Tickle {
@@ -8,9 +9,9 @@ public class Tickle {
     private static boolean flicked;
     private static double fullExtend, fullRetract;
 
-    public static void init(Servo r, Servo l) {
-        right = r;
-        left = l;
+    public static void init(HardwareMap map) {
+        right = map.get(Servo.class, "right");
+        left = map.get(Servo.class, "left");
         retract();
     }
 

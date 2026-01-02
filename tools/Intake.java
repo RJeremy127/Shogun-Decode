@@ -1,6 +1,8 @@
 package org.firstinspires.ftc.teamcode.tools;
 
 import com.qualcomm.robotcore.hardware.DcMotor;
+import com.qualcomm.robotcore.hardware.DcMotorSimple;
+import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
 
@@ -8,8 +10,9 @@ public class Intake {
     private static DcMotor intake;
     private static ElapsedTime runtime = new ElapsedTime();
 
-    public static void init(DcMotor motor) {
-       intake = motor;
+    public static void init(HardwareMap map) {
+        intake = map.get(DcMotor.class, "intake");
+        intake.setDirection(DcMotorSimple.Direction.REVERSE);
     }
 
     public static void intakeBall(double power, double spinTime) {
