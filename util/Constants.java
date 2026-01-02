@@ -5,7 +5,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class Constants {
-    public static int BACK_RIGHT = 0; // Control Hub 0 // right
+    public static int BACK_RIGHT = 0; // Control Hub 2 // right
     public static int BACK_LEFT = 1; // Expansion Hub 0 // left
 
     public static int FRONT_RIGHT = 2; // Control Hub 1 // back
