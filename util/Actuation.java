@@ -9,6 +9,7 @@ import org.firstinspires.ftc.robotcore.external.Telemetry;
 import org.firstinspires.ftc.teamcode.PurePursuit.RobotMovement;
 import org.firstinspires.ftc.teamcode.control.Odometry;
 import org.firstinspires.ftc.teamcode.datatypes.Pose;
+import org.firstinspires.ftc.teamcode.tools.Color;
 import org.firstinspires.ftc.teamcode.tools.Intake;
 import org.firstinspires.ftc.teamcode.tools.Sorter;
 import org.firstinspires.ftc.teamcode.tools.Tickle;
@@ -28,7 +29,8 @@ public class Actuation {
         Intake.init(map);
         Sorter.init(map);
         Turret.init(map);
-        Tickle.init(map);
+        //Tickle.init(map);
+        //Color.init(map);
     }
 
     //axial = x, vertical

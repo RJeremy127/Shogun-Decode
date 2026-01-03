@@ -29,13 +29,18 @@ public class Intake {
        intake.setPower(0);
        //turn sorter
     }
-    public static void intakeBall(double power, Color sensor, Sorter sort) {
-        while (sensor.getColor() == null) {
-            intake.setPower(power);
+    public static void intakeBall(double power) {
+        if (!Sorter.isFull()) {
+            while (Color.getColor() == null) {
+                intake.setPower(power);
+            }
+            intake.setPower(0);
+            //turn sorter
+            Sorter.turn(1);
+            Sorter.updatePorts(Color.getColor());
         }
-        intake.setPower(0);
-        //turn sorter
-        Sorter.turn(1);
-        Sorter.updatePorts(sensor.getColor());
+        else {
+            intake.setPower(0);
+        }
     }
 }

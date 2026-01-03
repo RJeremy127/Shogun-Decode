@@ -32,6 +32,10 @@ public class Sorter {
     public static void updatePorts(String ballColor) {
         ports[currentPort] = ballColor;
     }
+
+    public static String[] getPorts() {return ports;}
+
+    public static boolean isBusy() {return sorter.isBusy();}
     public static boolean isFull() {
         for (String item : ports) {
             if (item == null) {

@@ -43,12 +43,14 @@ import com.qualcomm.robotcore.util.ElapsedTime;
 import org.firstinspires.ftc.robotcore.external.navigation.Pose3D;
 import org.firstinspires.ftc.teamcode.datatypes.Point;
 import org.firstinspires.ftc.teamcode.datatypes.Pose;
+import org.firstinspires.ftc.teamcode.tools.Color;
 import org.firstinspires.ftc.teamcode.tools.Intake;
 import org.firstinspires.ftc.teamcode.tools.Sorter;
 import org.firstinspires.ftc.teamcode.tools.Turret;
 import org.firstinspires.ftc.teamcode.tools.tag;
 import org.firstinspires.ftc.teamcode.util.Actuation;
 
+import java.util.Arrays;
 import java.util.List;
 
 @TeleOp(name="Tele", group="Linear OpMode")
@@ -57,12 +59,15 @@ public class TeleOP extends LinearOpMode {
     // Declare OpMode members for each of the 4 motors.
     private ElapsedTime runtime = new ElapsedTime();
     private Limelight3A limelight;
+    private boolean lastRightBumper = false;
+    private boolean lastLeftBumper = false;
 
     @Override
     public void runOpMode() {
 
         Actuation.setup(hardwareMap, new Pose(0,0,0), telemetry);
         limelight = hardwareMap.get(Limelight3A.class, "limelight");
+        limelight.pipelineSwitch(7);
         telemetry.addData("Status", "Initialized");
         telemetry.update();
 
@@ -72,30 +77,50 @@ public class TeleOP extends LinearOpMode {
         // run until the end of the match (driver presses STOP)
         while (opModeIsActive()) {
             LLResult llresult = limelight.getLatestResult();
-
             if (llresult != null && llresult.isValid()) {
                 List<LLResultTypes.FiducialResult> results = llresult.getFiducialResults();
                 Pose3D botpose = llresult.getBotpose();
                 Point mt1_postion = tag.getPosition(botpose);
                 double Tx = llresult.getTx();
+                telemetry.addData("Tx: ",  Tx);
+                telemetry.addData("Position: ", mt1_postion.toString());
                 Turret.track(Tx);
+                telemetry.update();
             }
-            double axial   = -gamepad1.left_stick_y;
+            double axial   =  -gamepad1.left_stick_y;
             double lateral =  gamepad1.left_stick_x;
             double yaw     =  gamepad1.right_stick_x;
+            telemetry.addData("axial: ", axial);
+            telemetry.addData("lateral", lateral);
+            telemetry.addData("yaw", yaw);
 
             Actuation.drive(axial,lateral,yaw);
 
+            //String ballColor = Color.getColor();
+
             if (gamepad1.circle) {
-                Intake.intakeBall(0.5, 0.5);
+                Intake.intakeBall(0.9, 5);
             }
-            if (gamepad1.right_bumper) {
+            if (gamepad1.cross) {
+                Intake.intakeBall(-0.9, 5);
+            }
+            if (gamepad1.right_bumper && !lastRightBumper && !Sorter.isBusy()) {
                 Sorter.turn(1);
             }
-            if (gamepad1.left_bumper) {
+            if (gamepad1.left_bumper && !lastLeftBumper && !Sorter.isBusy()) {
                 Sorter.turn(-1);
             }
+            if (gamepad1.right_trigger > 0.9) {
+                Turret.turn(-3);
+                gamepad1.rumble(100);
+            }
+            if (gamepad1.left_trigger > 0.9) {
+                Turret.turn(3);
+                gamepad1.rumble(100);
+            }
             telemetry.addData("Status", "Run Time: " + runtime.toString());
+            //telemetry.addData("Ball Color: ", Arrays.toString(Sorter.getPorts()));
             telemetry.update();
         }
-    }}
+    }
+}

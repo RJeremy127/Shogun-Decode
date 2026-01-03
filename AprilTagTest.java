@@ -44,7 +44,7 @@ public class AprilTagTest extends OpMode{
         //pipeline 8 is ID20(BLUE)
         //pipeline 9 is ID24(RED)
         limelight.pipelineSwitch(pipeline);
-        turn = hardwareMap.dcMotor.get("turn");
+        turn = hardwareMap.dcMotor.get("turnTable");
     }
 
     @Override

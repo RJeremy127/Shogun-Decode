@@ -41,7 +41,7 @@ import org.firstinspires.ftc.teamcode.datatypes.Pair;
 import org.firstinspires.ftc.teamcode.rendertypes.BoundingBox;
 import org.firstinspires.ftc.teamcode.rendertypes.Display;
 
-@TeleOp(name="TeLeOp_Odometry_Display", group="Linear OpMode")
+@TeleOp(name = "TeLeOp_Odometry_Display", group = "Linear OpMode")
 @Disabled
 
 public class TeLeOp_Odometry_Display extends LinearOpMode {
@@ -55,30 +55,31 @@ public class TeLeOp_Odometry_Display extends LinearOpMode {
 
     private IMU imu = null;
 
-    //send encoders to odometry in order              [leftDeadwheel,  rightDeadwheel, backDeadwheel]
-    private Odometry otto = new Odometry(new DcMotor[]{leftBackDrive, rightFrontDrive, leftFrontDrive}, imu);
-
+    // send encoders to odometry in order [leftDeadwheel, rightDeadwheel,
+    // backDeadwheel]
+    private Odometry otto = new Odometry(new DcMotor[] { leftBackDrive, rightFrontDrive, leftFrontDrive }, imu);
 
     private Display disp = new Display(19, 20, telemetry);
-    private BoundingBox bbTest = new BoundingBox(new Pair[]{
+    private BoundingBox bbTest = new BoundingBox(new Pair[] {
             new Pair(-3, -6),
             new Pair(3, -6),
             new Pair(3, 6),
             new Pair(-3, 6),
 
-
     });
+
     @Override
     public void runOpMode() {
 
-
-        // Initialize the hardware variables. Note that the strings used here must correspond
-        // to the names assigned during the robot configuration step on the DS or RC devices.
-        leftFrontDrive  = hardwareMap.get(DcMotor.class, "frontLeft");
-        leftBackDrive  = hardwareMap.get(DcMotor.class, "backLeft");
+        // Initialize the hardware variables. Note that the strings used here must
+        // correspond
+        // to the names assigned during the robot configuration step on the DS or RC
+        // devices.
+        leftFrontDrive = hardwareMap.get(DcMotor.class, "frontLeft");
+        leftBackDrive = hardwareMap.get(DcMotor.class, "backLeft");
         rightFrontDrive = hardwareMap.get(DcMotor.class, "frontRight");
         rightBackDrive = hardwareMap.get(DcMotor.class, "backRight");
-        otto.setEncoders(new DcMotor[]{leftBackDrive, rightFrontDrive, leftFrontDrive});
+        otto.setEncoders(new DcMotor[] { leftBackDrive, rightFrontDrive, leftFrontDrive });
 
         leftFrontDrive.setDirection(DcMotor.Direction.REVERSE);
         leftBackDrive.setDirection(DcMotor.Direction.REVERSE);
@@ -87,12 +88,10 @@ public class TeLeOp_Odometry_Display extends LinearOpMode {
 
         // Wait for the game to start (driver presses START)
 
-
-
         waitForStart();
         runtime.reset();
 
-        //otto.start();
+        // otto.start();
         otto.resetEncoders();
         disp.fill('.');
 
@@ -100,17 +99,20 @@ public class TeLeOp_Odometry_Display extends LinearOpMode {
         while (opModeIsActive()) {
             double max;
 
-            // POV Mode uses left joystick to go forward & strafe, and right joystick to rotate.
-            double axial   = -gamepad1.left_stick_y + (-gamepad2.left_stick_y);  // Note: pushing stick forward gives negative value
-            double lateral =  gamepad1.left_stick_x + gamepad2.left_stick_x;
-            double yaw     =  .3;//(-gamepad1.right_stick_x) + (-gamepad2.right_stick_x);
+            // POV Mode uses left joystick to go forward & strafe, and right joystick to
+            // rotate.
+            double axial = -gamepad1.left_stick_y + (-gamepad2.left_stick_y); // Note: pushing stick forward gives
+                                                                              // negative value
+            double lateral = gamepad1.left_stick_x + gamepad2.left_stick_x;
+            double yaw = .3;// (-gamepad1.right_stick_x) + (-gamepad2.right_stick_x);
 
-            // Combine the joystick requests for each axis-motion to determine each wheel's power.
+            // Combine the joystick requests for each axis-motion to determine each wheel's
+            // power.
             // Set up a variable for each drive wheel to save the power level for telemetry.
-            double leftFrontPower  = axial + lateral + yaw;
+            double leftFrontPower = axial + lateral + yaw;
             double rightFrontPower = axial - lateral - yaw;
-            double leftBackPower   = axial - lateral + yaw;
-            double rightBackPower  = axial + lateral - yaw;
+            double leftBackPower = axial - lateral + yaw;
+            double rightBackPower = axial + lateral - yaw;
 
             // Normalize the values so no wheel power exceeds 100%
             // This ensures that the robot maintains the desired motion.
@@ -118,13 +120,11 @@ public class TeLeOp_Odometry_Display extends LinearOpMode {
             max = Math.max(max, Math.abs(leftBackPower));
             max = Math.max(max, Math.abs(rightBackPower));
 
-
-
             if (max > 1.0) {
-                leftFrontPower  /= max;
+                leftFrontPower /= max;
                 rightFrontPower /= max;
-                leftBackPower   /= max;
-                rightBackPower  /= max;
+                leftBackPower /= max;
+                rightBackPower /= max;
             }
 
             // Send calculated power to wheels
@@ -144,4 +144,5 @@ public class TeLeOp_Odometry_Display extends LinearOpMode {
 
             otto.updateOdometry();
         }
-    }}
+    }
+}

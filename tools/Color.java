@@ -1,32 +1,34 @@
 package org.firstinspires.ftc.teamcode.tools;
 
 import com.qualcomm.robotcore.hardware.ColorSensor;
+import com.qualcomm.robotcore.hardware.HardwareMap;
+
 import java.util.Arrays;
 
 public class Color {
-    private ColorSensor color;
-    private int[] rgb;
-    private String ballColor;
+    private static ColorSensor color;
+    private static int[] rgb;
+    private static String ballColor;
 
-    public Color(ColorSensor sensor) {this.color = sensor;}
+    public static void init(HardwareMap map) {color = map.get(ColorSensor.class, "color");}
 
-     public void detectColor() {
+    public static void detectColor() {
         rgb = new int[]{color.red(), color.green(), color.blue()};
     }
-    public String getColor() {
+    public static String getColor() {
          //[0]: Red [1]: Green [2]: Blue
         detectColor();
         if (rgb[1] > rgb[0] && rgb[1] > rgb[2] && rgb[0] > 500 && rgb[2] > 500) {
-            this.ballColor = "G";
+            ballColor = "G";
         }
         else if (rgb[2] > rgb[1] && rgb[2] > rgb[0] && rgb[0] > 500 && rgb[1] > 500) {
-            this.ballColor = "P";
+            ballColor = "P";
         }
         else{
-            this.ballColor =  null;
+            ballColor =  null;
         }
         return getBallColor();
     }
-    public String getBallColor() {return this.ballColor;}
+    public static String getBallColor() {return ballColor;}
     public boolean checkMotif(String[] motif, String[] received) {return Arrays.equals(motif,received);}
 }

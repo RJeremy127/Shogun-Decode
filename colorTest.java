@@ -16,8 +16,6 @@ public class colorTest extends OpMode {
 
     @Override
     public void loop() {
-        Color sensor = new Color(color);
-        sensor.detectColor();
         // RBG value for purple:
 
     }
