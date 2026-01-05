@@ -8,3 +8,8 @@ Flywheel -- Port 2 Contorl
 Intake -- Port 3 control  
 Flicker1 -- Port 1
 Flicker2 -- Port 2
+
+
+```
+adb connect 192.168.43.1:5555
+```
