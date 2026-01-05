@@ -44,6 +44,7 @@ import org.firstinspires.ftc.robotcore.external.navigation.Pose3D;
 import org.firstinspires.ftc.teamcode.datatypes.Point;
 import org.firstinspires.ftc.teamcode.datatypes.Pose;
 import org.firstinspires.ftc.teamcode.tools.Color;
+import org.firstinspires.ftc.teamcode.tools.Flywheel;
 import org.firstinspires.ftc.teamcode.tools.Intake;
 import org.firstinspires.ftc.teamcode.tools.Sorter;
 import org.firstinspires.ftc.teamcode.tools.Turret;
@@ -59,8 +60,9 @@ public class TeleOP extends LinearOpMode {
     // Declare OpMode members for each of the 4 motors.
     private ElapsedTime runtime = new ElapsedTime();
     private Limelight3A limelight;
-    private boolean lastRightBumper = false;
-    private boolean lastLeftBumper = false;
+    private boolean lastRight = false;
+    private boolean lastLeft = false;
+    private boolean isTrack = false;
 
     @Override
     public void runOpMode() {
@@ -70,14 +72,17 @@ public class TeleOP extends LinearOpMode {
         limelight.pipelineSwitch(7);
         telemetry.addData("Status", "Initialized");
         telemetry.update();
+        limelight.start();
 
         waitForStart();
         runtime.reset();
 
         // run until the end of the match (driver presses STOP)
         while (opModeIsActive()) {
+            isTrack = false;
             LLResult llresult = limelight.getLatestResult();
-            if (llresult != null && llresult.isValid()) {
+
+            if (llresult != null && llresult.isValid() && isTrack) {
                 List<LLResultTypes.FiducialResult> results = llresult.getFiducialResults();
                 Pose3D botpose = llresult.getBotpose();
                 Point mt1_postion = tag.getPosition(botpose);
@@ -85,7 +90,6 @@ public class TeleOP extends LinearOpMode {
                 telemetry.addData("Tx: ",  Tx);
                 telemetry.addData("Position: ", mt1_postion.toString());
                 Turret.track(Tx);
-                telemetry.update();
             }
             double axial   =  -gamepad1.left_stick_y;
             double lateral =  gamepad1.left_stick_x;
@@ -99,24 +103,30 @@ public class TeleOP extends LinearOpMode {
             //String ballColor = Color.getColor();
 
             if (gamepad1.circle) {
-                Intake.intakeBall(0.9, 5);
+                Intake.intakeBall(0.8, 1);
             }
             if (gamepad1.cross) {
-                Intake.intakeBall(-0.9, 5);
+                Intake.intakeBall(-0.8, 1);
             }
-            if (gamepad1.right_bumper && !lastRightBumper && !Sorter.isBusy()) {
+            if (gamepad1.dpad_right && !lastRight && !Sorter.isBusy()) {
                 Sorter.turn(1);
             }
-            if (gamepad1.left_bumper && !lastLeftBumper && !Sorter.isBusy()) {
+            if (gamepad1.dpad_left && !lastLeft && !Sorter.isBusy()) {
                 Sorter.turn(-1);
             }
-            if (gamepad1.right_trigger > 0.9) {
+            if (gamepad1.right_bumper) {
                 Turret.turn(-3);
-                gamepad1.rumble(100);
+                gamepad1.rumble(50);
             }
-            if (gamepad1.left_trigger > 0.9) {
+            if (gamepad1.left_bumper) {
                 Turret.turn(3);
-                gamepad1.rumble(100);
+                gamepad1.rumble(50);
+            }
+            if (gamepad1.square) {
+                isTrack = true;
+            }
+            if (gamepad1.right_trigger > 0.2) {
+                Flywheel.run(gamepad1.right_trigger);
             }
             telemetry.addData("Status", "Run Time: " + runtime.toString());
             //telemetry.addData("Ball Color: ", Arrays.toString(Sorter.getPorts()));
