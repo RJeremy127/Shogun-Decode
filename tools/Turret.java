@@ -7,7 +7,7 @@ import com.qualcomm.robotcore.hardware.HardwareMap;
 
 public class Turret {
     private static DcMotor motor;
-    private static int maxTicks = 2150;
+    private static int maxTicks = 1538;
     private static int ticks = 700;
     private static double motorPower = 0.5;
     private static int target = 0;

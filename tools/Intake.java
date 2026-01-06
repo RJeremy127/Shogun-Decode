@@ -15,21 +15,17 @@ public class Intake {
         intake.setDirection(DcMotorSimple.Direction.REVERSE);
     }
 
-    public static void intakeBall(double power, double spinTime) {
-       double startTime = runtime.seconds();
-       while (runtime.seconds() < (startTime+spinTime)) {
-          intake.setPower(power);
-       }
-       intake.setPower(0);
+    public static void intakeBall(double power) {
+        intake.setPower(power);
     }
-    public static void intakeBall(double power, Color sensor) {
-       while (sensor.getColor() == null) {
+    public static void intakeBallColor(double power) {
+       while (Color.getColor() == null) {
            intake.setPower(power);
        }
        intake.setPower(0);
        //turn sorter
     }
-    public static void intakeBall(double power) {
+    public static void intake(double power) {
         if (!Sorter.isFull()) {
             while (Color.getColor() == null) {
                 intake.setPower(power);
@@ -42,5 +38,9 @@ public class Intake {
         else {
             intake.setPower(0);
         }
+    }
+
+    public static boolean isBusy() {
+        return intake.isBusy();
     }
 }

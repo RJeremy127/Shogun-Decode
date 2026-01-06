@@ -19,6 +19,7 @@ import org.firstinspires.ftc.teamcode.tools.Turret;
 public class Actuation {
     private static DcMotor[] motors;
     public static Odometry otto;
+    private static final double DEADZONE = 0.05;
 
 
     public static void setup(HardwareMap map, Pose startPose, Telemetry t) { // Initialize other things as well
@@ -30,8 +31,8 @@ public class Actuation {
         Intake.init(map);
         Sorter.init(map);
         Turret.init(map);
-        Flywheel.init(map);
-        //Tickle.init(map);
+        //Flywheel.init(map);
+        Tickle.init(map);
         //Color.init(map);
     }
 
@@ -39,6 +40,11 @@ public class Actuation {
     //lateral = y
     // yaw = heading
     public static void drive(double axial, double lateral, double yaw) {
+        // Apply deadzone to prevent drift from joystick noise
+        axial = applyDeadzone(axial);
+        lateral = applyDeadzone(lateral);
+        yaw = applyDeadzone(yaw);
+
         double max;
         double leftFrontPower  = axial + lateral+yaw;
         double rightFrontPower = axial - lateral-yaw;
@@ -61,5 +67,11 @@ public class Actuation {
         motors[0].setPower(rightBackPower);
     }
 
-
+    private static double applyDeadzone(double value) {
+        if (Math.abs(value) < DEADZONE) {
+            return 0;
+        }
+        // Scale the remaining range so there's no jump after deadzone
+        return Math.signum(value) * (Math.abs(value) - DEADZONE) / (1.0 - DEADZONE);
+    }
 }

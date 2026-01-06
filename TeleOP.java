@@ -47,6 +47,7 @@ import org.firstinspires.ftc.teamcode.tools.Color;
 import org.firstinspires.ftc.teamcode.tools.Flywheel;
 import org.firstinspires.ftc.teamcode.tools.Intake;
 import org.firstinspires.ftc.teamcode.tools.Sorter;
+import org.firstinspires.ftc.teamcode.tools.Tickle;
 import org.firstinspires.ftc.teamcode.tools.Turret;
 import org.firstinspires.ftc.teamcode.tools.tag;
 import org.firstinspires.ftc.teamcode.util.Actuation;
@@ -63,11 +64,11 @@ public class TeleOP extends LinearOpMode {
     private boolean lastRight = false;
     private boolean lastLeft = false;
     private boolean isTrack = false;
+    private boolean isFlicked = false;
 
     @Override
     public void runOpMode() {
-
-        Actuation.setup(hardwareMap, new Pose(0,0,0), telemetry);
+        Actuation.setup(hardwareMap, new Pose(0, 0, 0), telemetry);
         limelight = hardwareMap.get(Limelight3A.class, "limelight");
         limelight.pipelineSwitch(7);
         telemetry.addData("Status", "Initialized");
@@ -80,57 +81,64 @@ public class TeleOP extends LinearOpMode {
         // run until the end of the match (driver presses STOP)
         while (opModeIsActive()) {
             isTrack = false;
+            isFlicked = Tickle.getStatus();
             LLResult llresult = limelight.getLatestResult();
+            if (!Intake.isBusy()) {Tickle.blockBall();}
 
             if (llresult != null && llresult.isValid() && isTrack) {
                 List<LLResultTypes.FiducialResult> results = llresult.getFiducialResults();
                 Pose3D botpose = llresult.getBotpose();
                 Point mt1_postion = tag.getPosition(botpose);
                 double Tx = llresult.getTx();
-                telemetry.addData("Tx: ",  Tx);
+                telemetry.addData("Tx: ", Tx);
                 telemetry.addData("Position: ", mt1_postion.toString());
                 Turret.track(Tx);
             }
-            double axial   =  -gamepad1.left_stick_y;
-            double lateral =  gamepad1.left_stick_x;
-            double yaw     =  gamepad1.right_stick_x;
-            telemetry.addData("axial: ", axial);
-            telemetry.addData("lateral", lateral);
-            telemetry.addData("yaw", yaw);
-
-            Actuation.drive(axial,lateral,yaw);
-
             //String ballColor = Color.getColor();
+            pad1();
+            pad2();
 
-            if (gamepad1.circle) {
-                Intake.intakeBall(0.8, 1);
-            }
-            if (gamepad1.cross) {
-                Intake.intakeBall(-0.8, 1);
-            }
-            if (gamepad1.dpad_right && !lastRight && !Sorter.isBusy()) {
-                Sorter.turn(1);
-            }
-            if (gamepad1.dpad_left && !lastLeft && !Sorter.isBusy()) {
-                Sorter.turn(-1);
-            }
-            if (gamepad1.right_bumper) {
-                Turret.turn(-3);
-                gamepad1.rumble(50);
-            }
-            if (gamepad1.left_bumper) {
-                Turret.turn(3);
-                gamepad1.rumble(50);
-            }
-            if (gamepad1.square) {
-                isTrack = true;
-            }
-            if (gamepad1.right_trigger > 0.2) {
-                Flywheel.run(gamepad1.right_trigger);
-            }
             telemetry.addData("Status", "Run Time: " + runtime.toString());
+            telemetry.addData("Is tracking: ", isTrack);
+            telemetry.addData("Color: ", Color.getColor());
             //telemetry.addData("Ball Color: ", Arrays.toString(Sorter.getPorts()));
             telemetry.update();
         }
     }
+    // gamepad 1: drive + intake
+    // gamepad 1: turret + shoot
+    public void pad1() {
+        double axial   =  -gamepad1.left_stick_y;
+        double lateral =  gamepad1.left_stick_x;
+        double yaw     =  gamepad1.right_stick_x;
+        Actuation.drive(axial,lateral,yaw);
+        if (gamepad1.circle && !isFlicked) {
+            Tickle.retract();
+            Intake.intake(0.8);
+        }
+        if (gamepad1.cross && !isFlicked) {
+            Tickle.retract();
+            Intake.intake(-0.8);
+        }
+        if (gamepad1.right_bumper && !Sorter.isBusy() && !isFlicked) {
+            Sorter.turn(1);
+        }
+        if (gamepad1.left_bumper && !Sorter.isBusy() && !isFlicked) {
+            Sorter.turn(-1);
+        }
+
+    }
+    public void pad2() {
+        if (gamepad2.square) {
+         isTrack = true;
+        }
+        else {
+            Turret.turn((int)(gamepad2.left_stick_x * 5));
+        }
+        if (gamepad2.right_trigger > 0.2) {
+            Tickle.flick();
+            Flywheel.run(gamepad2.right_trigger);
+        }
+    }
 }
+

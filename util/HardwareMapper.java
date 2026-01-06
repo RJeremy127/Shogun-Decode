@@ -24,6 +24,12 @@ public class HardwareMapper {
         motors[BACK_LEFT].setDirection(DcMotor.Direction.REVERSE);
         motors[FRONT_RIGHT].setDirection(DcMotor.Direction.FORWARD);
         motors[BACK_RIGHT].setDirection(DcMotor.Direction.FORWARD);
+
+        // Set brake mode so motors stop immediately when power is zero
+        for (DcMotor motor : motors) {
+            motor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        }
+
         return motors;
     }
 
