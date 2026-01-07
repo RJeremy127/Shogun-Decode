@@ -11,7 +11,7 @@ import com.qualcomm.robotcore.hardware.Servo;
 import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.Pose3D;
 import org.firstinspires.ftc.teamcode.datatypes.Point;
-import org.firstinspires.ftc.teamcode.tools.tag;
+import org.firstinspires.ftc.teamcode.tools.JohnLimeLight;
 
 import java.util.Arrays;
 import java.util.List;
@@ -62,19 +62,19 @@ public class AprilTagTest extends OpMode{
             Pose3D botpose = llresult.getBotpose();
             Pose3D botpose_mt2 = llresult.getBotpose_MT2();
 
-            Point mt1_postion = tag.getPosition(botpose);
-            Point mt2_position = tag.getPosition(botpose_mt2);
+            Point mt1_postion = JohnLimeLight.getPosition(botpose);
+            Point mt2_position = JohnLimeLight.getPosition(botpose_mt2);
 
-            int tagID = tag.getTagID(results);
-            motif = tag.getMotif(tagID);
+            int tagID = JohnLimeLight.getTagID(results);
+            motif = JohnLimeLight.getMotif(tagID);
             double Tx = llresult.getTx();
             double Ty = llresult.getTy();
             double Ta = llresult.getTa();
-            double distance = tag.getDistance(mountAngle, Ty, LmHeight, TagHeight);
+            double distance = JohnLimeLight.getDistance(mountAngle, Ty, LmHeight, TagHeight);
 
             DistanceUnit unit = botpose.getPosition().unit;
 
-            tag.trackTag(turn, trackSpeed, Tx);
+            JohnLimeLight.trackTag(turn, trackSpeed, Tx);
 
             telemetry.addData("April Tag ", tagID);
             telemetry.addData("Target x", Tx);

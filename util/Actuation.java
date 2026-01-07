@@ -31,9 +31,9 @@ public class Actuation {
         Intake.init(map);
         Sorter.init(map);
         Turret.init(map);
-        //Flywheel.init(map);
+        Flywheel.init(map);
         Tickle.init(map);
-        //Color.init(map);
+        Color.init(map);
     }
 
     //axial = x, vertical

@@ -46,10 +46,10 @@ import org.firstinspires.ftc.teamcode.datatypes.Pose;
 import org.firstinspires.ftc.teamcode.tools.Color;
 import org.firstinspires.ftc.teamcode.tools.Flywheel;
 import org.firstinspires.ftc.teamcode.tools.Intake;
+import org.firstinspires.ftc.teamcode.tools.JohnLimeLight;
 import org.firstinspires.ftc.teamcode.tools.Sorter;
 import org.firstinspires.ftc.teamcode.tools.Tickle;
 import org.firstinspires.ftc.teamcode.tools.Turret;
-import org.firstinspires.ftc.teamcode.tools.tag;
 import org.firstinspires.ftc.teamcode.util.Actuation;
 
 import java.util.Arrays;
@@ -65,12 +65,15 @@ public class TeleOP extends LinearOpMode {
     private boolean lastLeft = false;
     private boolean isTrack = false;
     private boolean isFlicked = false;
+    private boolean isSpinningUp = false;
+    private double targetFlywheelVelocity = 0;
+    private JohnLimeLight.Alliance alliance = JohnLimeLight.Alliance.BLUE;
 
     @Override
     public void runOpMode() {
         Actuation.setup(hardwareMap, new Pose(0, 0, 0), telemetry);
         limelight = hardwareMap.get(Limelight3A.class, "limelight");
-        limelight.pipelineSwitch(7);
+        JohnLimeLight.switchToObelisk(limelight);
         telemetry.addData("Status", "Initialized");
         telemetry.update();
         limelight.start();
@@ -83,12 +86,15 @@ public class TeleOP extends LinearOpMode {
             isTrack = false;
             isFlicked = Tickle.getStatus();
             LLResult llresult = limelight.getLatestResult();
-            if (!Intake.isBusy()) {Tickle.blockBall();}
+            //if (!Intake.isBusy()) {Tickle.blockBall();}
+
+            // Update flywheel PID controller
+            Flywheel.update();
 
             if (llresult != null && llresult.isValid() && isTrack) {
                 List<LLResultTypes.FiducialResult> results = llresult.getFiducialResults();
                 Pose3D botpose = llresult.getBotpose();
-                Point mt1_postion = tag.getPosition(botpose);
+                Point mt1_postion = JohnLimeLight.getPosition(botpose);
                 double Tx = llresult.getTx();
                 telemetry.addData("Tx: ", Tx);
                 telemetry.addData("Position: ", mt1_postion.toString());
@@ -101,6 +107,8 @@ public class TeleOP extends LinearOpMode {
             telemetry.addData("Status", "Run Time: " + runtime.toString());
             telemetry.addData("Is tracking: ", isTrack);
             telemetry.addData("Color: ", Color.getColor());
+            telemetry.addData("Flywheel Target: ", String.format("%.0f", targetFlywheelVelocity));
+            telemetry.addData("Flywheel Ready: ", isSpinningUp && Flywheel.isAtSpeed(50));
             //telemetry.addData("Ball Color: ", Arrays.toString(Sorter.getPorts()));
             telemetry.update();
         }
@@ -129,15 +137,31 @@ public class TeleOP extends LinearOpMode {
 
     }
     public void pad2() {
+        // Turret control
         if (gamepad2.square) {
-         isTrack = true;
+            isTrack = true;
         }
         else {
             Turret.turn((int)(gamepad2.left_stick_x * 5));
         }
+
+        // Flywheel shooting with PID velocity control
         if (gamepad2.right_trigger > 0.2) {
-            Tickle.flick();
-            Flywheel.run(gamepad2.right_trigger);
+            // Hard-coded target velocity (adjust this value for your robot)
+            targetFlywheelVelocity = 1500;  // ticks/sec
+            Flywheel.setTargetVelocity(targetFlywheelVelocity);
+            isSpinningUp = true;
+
+            // Auto-flick when flywheel reaches target speed (tolerance: 50 ticks/sec)
+            if (Flywheel.isAtSpeed(50)) {
+                Tickle.flick();
+            }
+        }
+        // Stop flywheel when trigger released
+        else {
+            targetFlywheelVelocity = 0;
+            Flywheel.setTargetVelocity(0);
+            isSpinningUp = false;
         }
     }
 }
