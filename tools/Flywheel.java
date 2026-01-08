@@ -2,6 +2,7 @@ package org.firstinspires.ftc.teamcode.tools;
 
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
+import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
@@ -9,10 +10,10 @@ public class Flywheel {
     private static DcMotorEx wheel;
 
     // PID gains - tune these for your flywheel
-    private static double kP = 0.005;
+    private static double kP = 0.0037;
     private static double kI = 0.0;
-    private static double kD = 0.0;
-    private static double kF = 0.0006;  // Feedforward gain
+    private static double kD = 0.000008;
+    private static double kF = 0.00041;  // Feedforward gain
 
     // PID state
     private static double targetVelocity = 0;  // ticks per second
@@ -27,6 +28,8 @@ public class Flywheel {
     public static void init(HardwareMap map) {
         wheel = map.get(DcMotorEx.class, "flywheel");
         wheel.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        wheel.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.FLOAT);
+        wheel.setDirection(DcMotorSimple.Direction.REVERSE);
         timer.reset();
         lastTime = 0;
         resetPID();
@@ -112,5 +115,9 @@ public class Flywheel {
         targetVelocity = 0;
         resetPID();
         wheel.setPower(0);
+    }
+
+    public static double calculateTargetVelocity(double Ty) {
+        return -34.24658 * Ty + 1842.97945;
     }
 }

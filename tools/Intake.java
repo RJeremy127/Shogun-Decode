@@ -43,4 +43,7 @@ public class Intake {
     public static boolean isBusy() {
         return intake.isBusy();
     }
+     public static void stop() {
+        intake.setPower(0);
+     }
 }

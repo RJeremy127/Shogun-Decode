@@ -61,8 +61,7 @@ public class TeleOP extends LinearOpMode {
     // Declare OpMode members for each of the 4 motors.
     private ElapsedTime runtime = new ElapsedTime();
     private Limelight3A limelight;
-    private boolean lastRight = false;
-    private boolean lastLeft = false;
+    private boolean lastTickle = false;
     private boolean isTrack = false;
     private boolean isFlicked = false;
     private boolean isSpinningUp = false;
@@ -86,12 +85,13 @@ public class TeleOP extends LinearOpMode {
             isTrack = false;
             isFlicked = Tickle.getStatus();
             LLResult llresult = limelight.getLatestResult();
+            limelight.pipelineSwitch(9);
             //if (!Intake.isBusy()) {Tickle.blockBall();}
 
             // Update flywheel PID controller
             Flywheel.update();
 
-            if (llresult != null && llresult.isValid() && isTrack) {
+            if (llresult != null && llresult.isValid()) {
                 List<LLResultTypes.FiducialResult> results = llresult.getFiducialResults();
                 Pose3D botpose = llresult.getBotpose();
                 Point mt1_postion = JohnLimeLight.getPosition(botpose);
@@ -107,6 +107,7 @@ public class TeleOP extends LinearOpMode {
             telemetry.addData("Status", "Run Time: " + runtime.toString());
             telemetry.addData("Is tracking: ", isTrack);
             telemetry.addData("Color: ", Color.getColor());
+            telemetry.addData("RGB: ", Arrays.toString(Color.getRGB()));
             telemetry.addData("Flywheel Target: ", String.format("%.0f", targetFlywheelVelocity));
             telemetry.addData("Flywheel Ready: ", isSpinningUp && Flywheel.isAtSpeed(50));
             //telemetry.addData("Ball Color: ", Arrays.toString(Sorter.getPorts()));
@@ -120,34 +121,56 @@ public class TeleOP extends LinearOpMode {
         double lateral =  gamepad1.left_stick_x;
         double yaw     =  gamepad1.right_stick_x;
         Actuation.drive(axial,lateral,yaw);
-        if (gamepad1.circle && !isFlicked) {
+        if (gamepad1.right_trigger > 0.5 && !isFlicked) {
             Tickle.retract();
-            Intake.intake(0.8);
+            gamepad1.rumble(100);
+            Intake.intakeBall(1.0);
         }
-        if (gamepad1.cross && !isFlicked) {
+        else if (gamepad1.left_trigger > 0.5 && !isFlicked) {
             Tickle.retract();
-            Intake.intake(-0.8);
+            gamepad1.rumble(100);
+            Intake.intakeBall(-1.0);
+        }
+        else {
+            Intake.stop();
         }
         if (gamepad1.right_bumper && !Sorter.isBusy() && !isFlicked) {
             Sorter.turn(1);
+            //Tickle.blockBall();
         }
         if (gamepad1.left_bumper && !Sorter.isBusy() && !isFlicked) {
             Sorter.turn(-1);
+            //Tickle.blockBall();
         }
+        if (gamepad1.triangle && !lastTickle) {
+            if (Tickle.getStatus()) {
+                Tickle.retract();
+                lastTickle = true;
+            }
+            else {
+                Tickle.flick();
+                lastTickle = true;
+            }
+        }
+
 
     }
     public void pad2() {
         // Turret control
         if (gamepad2.square) {
-            isTrack = true;
+            if (isTrack) {
+                isTrack = false;
+            }
+            else {
+                isTrack = true;
+            }
         }
         else {
-            Turret.turn((int)(gamepad2.left_stick_x * 5));
+            Turret.turn((int)(gamepad2.left_stick_x * 20));
         }
 
         // Flywheel shooting with PID velocity control
         if (gamepad2.right_trigger > 0.2) {
-            // Hard-coded target velocity (adjust this value for your robot)
             targetFlywheelVelocity = 1500;  // ticks/sec
             Flywheel.setTargetVelocity(targetFlywheelVelocity);
             isSpinningUp = true;

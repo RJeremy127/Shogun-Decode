@@ -74,6 +74,7 @@ public class JohnLimeLight {
             motor.setPower(0);
         }
         else {
+
             motor.setPower(power);
         }
     }
