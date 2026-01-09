@@ -30,8 +30,11 @@ public class Turret {
         target += ticks;
         motor.setTargetPosition(target);
         motor.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-        if (motor.getCurrentPosition() < rightBound || motor.getCurrentPosition() > leftBound) {
+        // Only power motor when within safe bounds (-1150 to -240)
+        if (motor.getCurrentPosition() >= rightBound && motor.getCurrentPosition() <= leftBound) {
             motor.setPower(motorPower);
+        } else {
+            motor.setPower(0);  // Stop motor when out of bounds
         }
     }
 
@@ -55,13 +58,16 @@ public class Turret {
 
         motor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
 
-        // Deadzone: stop when close enough to target
-        if (motor.getCurrentPosition() < rightBound || motor.getCurrentPosition() > leftBound) {
+        // Only track when within safe bounds (-1150 to -240)
+        if (motor.getCurrentPosition() >= rightBound && motor.getCurrentPosition() <= leftBound) {
+            // Deadzone: stop when close enough to target
             if (Math.abs(tx) < 3.0) {
                 motor.setPower(0);
             } else {
                 motor.setPower(power);
             }
+        } else {
+            motor.setPower(0);  // Stop motor when out of bounds
         }
     }
 }

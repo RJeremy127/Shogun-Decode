@@ -61,19 +61,22 @@ public class TeleOP extends LinearOpMode {
 
     // Declare OpMode members for each of the 4 motors.
     private ElapsedTime runtime = new ElapsedTime();
+    private ElapsedTime flickTimer = new ElapsedTime();
     private Limelight3A limelight;
     private boolean lastTickle = false;
+    private boolean lastSquare = false;
     private boolean isTrack = false;
     private boolean isFlicked = false;
     private boolean isSpinningUp = false;
     private double targetFlywheelVelocity = 0;
-    private JohnLimeLight.Alliance alliance = JohnLimeLight.Alliance.BLUE;
     private String previousBallColor = null;
     private boolean lastFlicked = false;
     private boolean lastBlock = true;
     private double Tx;
     private double Ty;
     private Point position = new Point(0,0);
+    private boolean autoRetractPending = false;
+    private static final double RETRACT_DELAY_MS = 5000; // Time to wait before auto-retracting
 
     @Override
     public void runOpMode() {
@@ -85,6 +88,8 @@ public class TeleOP extends LinearOpMode {
         limelight.start();
 
         waitForStart();
+        //8 is Blue
+        //9 is Red
         limelight.pipelineSwitch(8);
         runtime.reset();
 
@@ -99,31 +104,48 @@ public class TeleOP extends LinearOpMode {
             if (llresult != null && llresult.isValid()) {
                 List<LLResultTypes.FiducialResult> results = llresult.getFiducialResults();
                 Pose3D botpose = llresult.getBotpose();
-                Point position = JohnLimeLight.getPosition(botpose);
+                position = JohnLimeLight.getPosition(botpose);
                 Tx = llresult.getTx();
                 Ty = llresult.getTy();
-                //if (isTrack) {Turret.track(Tx);}
+                if (isTrack) {Turret.track(Tx);}
             }
             if (lastBlock) {
                 Tickle.blockBall();
             }
+
+            // Auto-retract flickers after shooting
+            if (autoRetractPending && flickTimer.milliseconds() >= RETRACT_DELAY_MS) {
+                Tickle.retract();
+                autoRetractPending = false;
+                lastBlock = true;
+            }
+
             //String ballColor = Color.getColor();
             pad1();
             pad2();
 
-            if (!isTrack) {Turret.stop();}
+            /*
             String currentBallColor = Color.getColor();
             if (currentBallColor != null && previousBallColor == null && !Sorter.isBusy() && !Sorter.isFull()) {
                 Sorter.turn(1);
                 Sorter.updatePorts(currentBallColor);
                 gamepad1.rumble(200);
+                previousBallColor = currentBallColor;
             }
+            // Reset previousBallColor when no ball is detected
+            if (currentBallColor == null) {
+                previousBallColor = null;
+            }
+             */
 
+            /*
+            // Automatic sorter advance after shooting - COMMENTED OUT
             if (lastFlicked && !Tickle.getStatus() && !Sorter.isBusy()) {
                 Sorter.turn(1);
                 Sorter.updatePorts(null);
                 lastFlicked = false;
             }
+            */
 
             telemetry.addData("Status", "Run Time: " + runtime.toString());
             telemetry.addData("Servo Pos: ", Tickle.getPosition());
@@ -164,37 +186,48 @@ public class TeleOP extends LinearOpMode {
         }
         if (gamepad1.right_bumper && !Sorter.isBusy() && !isFlicked) {
             Sorter.turn(1);
-            //Tickle.blockBall();
         }
         if (gamepad1.left_bumper && !Sorter.isBusy() && !isFlicked) {
             Sorter.turn(-1);
-            //Tickle.blockBall();
         }
-        if (gamepad1.triangle && !lastTickle) {
+
+    }
+    public void pad2() {
+        // Turret control - toggle tracking mode
+        if (gamepad2.square && !lastSquare) {
+            isTrack = !isTrack;  // Toggle tracking mode
+            lastSquare = true;
+        }
+        if (!gamepad2.square) {
+            lastSquare = false;  // Reset when button is released
+        }
+        //sorter
+        if (gamepad1.right_bumper && !Sorter.isBusy() && !isFlicked) {
+            Sorter.turn(1);
+        }
+        if (gamepad1.left_bumper && !Sorter.isBusy() && !isFlicked) {
+            Sorter.turn(-1);
+        }
+        // Manual turret control only when not in tracking mode
+        if (!isTrack && !gamepad2.square) {
+            Turret.turn((int)(gamepad2.left_stick_x * 20));
+        }
+        //flicker control
+        if (gamepad1.dpad_down && !lastTickle) {
             if (Tickle.getStatus()) {
                 Tickle.retract();
                 lastTickle = true;
+                autoRetractPending = false; // Cancel auto-retract if manually controlled
             }
-            else {
+            else if (gamepad1.dpad_up){
                 Tickle.flick();
                 lastTickle = true;
+                autoRetractPending = false; // Manual control overrides auto-retract
             }
         }
-    }
-    public void pad2() {
-        // Turret control
-        if (gamepad2.square) {
-            if (isTrack) {
-                isTrack = false;
-            }
-            else {
-                isTrack = true;
-            }
+        if (!gamepad1.dpad_up || !gamepad1.dpad_down) {
+            lastTickle = false; // Reset when button is released
         }
-        else {
-            Turret.turn((int)(gamepad2.left_stick_x * 10));
-        }
-
         // Flywheel shooting with PID velocity control
         if (gamepad2.right_trigger > 0.2) {
             targetFlywheelVelocity = Flywheel.calculateTargetVelocity(Ty);  // ticks/sec
@@ -202,9 +235,11 @@ public class TeleOP extends LinearOpMode {
             isSpinningUp = true;
 
             // Auto-flick when flywheel reaches target speed (tolerance: 50 ticks/sec)
-            if (Flywheel.isAtSpeed(50)) {
+            if (Flywheel.isAtSpeed(20) && !autoRetractPending) {
                 Tickle.flick();
                 lastFlicked = true;
+                autoRetractPending = true;
+                flickTimer.reset();
             }
         }
         // Stop flywheel when trigger released

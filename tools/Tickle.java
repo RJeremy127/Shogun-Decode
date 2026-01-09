@@ -8,7 +8,7 @@ public class Tickle {
     private static boolean flicked;
     private static final double fullExtend = 0.75;
     private static final double fullRetract = 0.013;
-    private static final double blockBall = 0.08;
+    private static final double blockBall = 0.1;
 
     public static void init(HardwareMap map) {
         tickle = map.get(Servo.class, "tickle");

@@ -6,7 +6,7 @@ import com.qualcomm.robotcore.hardware.HardwareMap;
 public class Sorter {
     private static DcMotor sorter;
     static double target = 0;
-    static double motorPower = 0.5;
+    static double motorPower = 0.4;
     static double stepTicks = 128.66;
     static int currentPort = 0;
     static String[] ports = new String[3];
@@ -19,8 +19,8 @@ public class Sorter {
 
     public static void turn(int turns) {
         target += stepTicks * turns;
-        //caculate current port
-        currentPort = (currentPort + turns) % 3;
+        //caculate current port (handle negative modulo correctly)
+        currentPort = ((currentPort + turns) % 3 + 3) % 3;
         sorter.setTargetPosition((int)target);
         sorter.setMode(DcMotor.RunMode.RUN_TO_POSITION);
         sorter.setPower(motorPower);

@@ -19,21 +19,27 @@ public class Intake {
         intake.setPower(power);
     }
     public static void intakeBallColor(double power) {
-       while (Color.getColor() == null) {
+       // Non-blocking: OpMode loop should handle color detection logic
+       if (Color.getColor() == null) {
            intake.setPower(power);
+       } else {
+           intake.setPower(0);
+           //turn sorter
        }
-       intake.setPower(0);
-       //turn sorter
     }
     public static void intake(double power) {
+        // Non-blocking: OpMode loop should handle color detection and sorter logic
         if (!Sorter.isFull()) {
-            while (Color.getColor() == null) {
+            if (Color.getColor() == null) {
                 intake.setPower(power);
+            } else {
+                intake.setPower(0);
+                //turn sorter
+                if (!Sorter.isBusy()) {
+                    Sorter.turn(1);
+                    Sorter.updatePorts(Color.getColor());
+                }
             }
-            intake.setPower(0);
-            //turn sorter
-            Sorter.turn(1);
-            Sorter.updatePorts(Color.getColor());
         }
         else {
             intake.setPower(0);
