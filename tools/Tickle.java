@@ -7,8 +7,8 @@ public class Tickle {
     private static Servo tickle;
     private static boolean flicked;
     private static final double fullExtend = 0.75;
-    private static final double fullRetract = 0.5;
-    private static final double blockBall = 0.067;
+    private static final double fullRetract = 0.013;
+    private static final double blockBall = 0.08;
 
     public static void init(HardwareMap map) {
         tickle = map.get(Servo.class, "tickle");
@@ -22,6 +22,9 @@ public class Tickle {
     public static void retract() {
         tickle.setPosition(fullRetract);
         flicked = false;
+    }
+    public static double getPosition() {
+        return tickle.getPosition();
     }
     public static void blockBall() {
         tickle.setPosition(blockBall);

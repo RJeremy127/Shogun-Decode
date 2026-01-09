@@ -25,7 +25,7 @@ public class Color {
             ballColor = "P";
         }
         else{
-            ballColor =  "No Ball Found";
+            ballColor =  null;
         }
         return getBallColor();
     }

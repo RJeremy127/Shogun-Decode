@@ -17,6 +17,8 @@ public class Turret {
     private static double lastTx = 0;
     private static ElapsedTime timer = new ElapsedTime();
     private static double lastTime = 0;
+    private static int leftBound = -240;
+    private static int rightBound = -1150;
 
     public static void init(HardwareMap map) {
         motor = map.get(DcMotor.class, "turnTable");
@@ -28,7 +30,17 @@ public class Turret {
         target += ticks;
         motor.setTargetPosition(target);
         motor.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-        motor.setPower(motorPower);
+        if (motor.getCurrentPosition() < rightBound || motor.getCurrentPosition() > leftBound) {
+            motor.setPower(motorPower);
+        }
+    }
+
+    public static int getPosition() {
+        return motor.getCurrentPosition();
+    }
+
+    public static void stop() {
+        motor.setPower(0.0);
     }
     //need AprilTag class
     public static void track(double tx) {
@@ -55,10 +67,12 @@ public class Turret {
         motor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
 
         // Deadzone: stop when close enough to target
-        if (Math.abs(tx) < 3.0) {
-            motor.setPower(0);
-        } else {
-            motor.setPower(power);
+        if (motor.getCurrentPosition() < rightBound || motor.getCurrentPosition() > leftBound) {
+            if (Math.abs(tx) < 3.0) {
+                motor.setPower(0);
+            } else {
+                motor.setPower(power);
+            }
         }
 
         // Update state for next iteration

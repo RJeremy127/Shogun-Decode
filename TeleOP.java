@@ -52,6 +52,7 @@ import org.firstinspires.ftc.teamcode.tools.Tickle;
 import org.firstinspires.ftc.teamcode.tools.Turret;
 import org.firstinspires.ftc.teamcode.util.Actuation;
 
+import java.net.PortUnreachableException;
 import java.util.Arrays;
 import java.util.List;
 
@@ -67,6 +68,12 @@ public class TeleOP extends LinearOpMode {
     private boolean isSpinningUp = false;
     private double targetFlywheelVelocity = 0;
     private JohnLimeLight.Alliance alliance = JohnLimeLight.Alliance.BLUE;
+    private String previousBallColor = null;
+    private boolean lastFlicked = false;
+    private boolean lastBlock = true;
+    private double Tx;
+    private double Ty;
+    private Point position = new Point(0,0);
 
     @Override
     public void runOpMode() {
@@ -78,39 +85,58 @@ public class TeleOP extends LinearOpMode {
         limelight.start();
 
         waitForStart();
+        limelight.pipelineSwitch(8);
         runtime.reset();
 
         // run until the end of the match (driver presses STOP)
         while (opModeIsActive()) {
-            isTrack = false;
             isFlicked = Tickle.getStatus();
             LLResult llresult = limelight.getLatestResult();
-            limelight.pipelineSwitch(9);
             //if (!Intake.isBusy()) {Tickle.blockBall();}
-
             // Update flywheel PID controller
             Flywheel.update();
 
             if (llresult != null && llresult.isValid()) {
                 List<LLResultTypes.FiducialResult> results = llresult.getFiducialResults();
                 Pose3D botpose = llresult.getBotpose();
-                Point mt1_postion = JohnLimeLight.getPosition(botpose);
-                double Tx = llresult.getTx();
-                telemetry.addData("Tx: ", Tx);
-                telemetry.addData("Position: ", mt1_postion.toString());
-                Turret.track(Tx);
+                Point position = JohnLimeLight.getPosition(botpose);
+                Tx = llresult.getTx();
+                Ty = llresult.getTy();
+                //if (isTrack) {Turret.track(Tx);}
+            }
+            if (lastBlock) {
+                Tickle.blockBall();
             }
             //String ballColor = Color.getColor();
             pad1();
             pad2();
 
+            if (!isTrack) {Turret.stop();}
+            String currentBallColor = Color.getColor();
+            if (currentBallColor != null && previousBallColor == null && !Sorter.isBusy() && !Sorter.isFull()) {
+                Sorter.turn(1);
+                Sorter.updatePorts(currentBallColor);
+                gamepad1.rumble(200);
+            }
+
+            if (lastFlicked && !Tickle.getStatus() && !Sorter.isBusy()) {
+                Sorter.turn(1);
+                Sorter.updatePorts(null);
+                lastFlicked = false;
+            }
+
             telemetry.addData("Status", "Run Time: " + runtime.toString());
+            telemetry.addData("Servo Pos: ", Tickle.getPosition());
             telemetry.addData("Is tracking: ", isTrack);
             telemetry.addData("Color: ", Color.getColor());
             telemetry.addData("RGB: ", Arrays.toString(Color.getRGB()));
             telemetry.addData("Flywheel Target: ", String.format("%.0f", targetFlywheelVelocity));
             telemetry.addData("Flywheel Ready: ", isSpinningUp && Flywheel.isAtSpeed(50));
-            //telemetry.addData("Ball Color: ", Arrays.toString(Sorter.getPorts()));
+            telemetry.addData("Tx: ", Tx);
+            telemetry.addData("Ty: ", Ty);
+            telemetry.addData("Position: ", position.toString());
+            telemetry.addData("Turret Position: ", Turret.getPosition());
+            telemetry.addData("Ball Color: ", Arrays.toString(Sorter.getPorts()));
             telemetry.update();
         }
     }
@@ -123,11 +149,13 @@ public class TeleOP extends LinearOpMode {
         Actuation.drive(axial,lateral,yaw);
         if (gamepad1.right_trigger > 0.5 && !isFlicked) {
             Tickle.retract();
+            lastBlock = false;
             gamepad1.rumble(100);
             Intake.intakeBall(1.0);
         }
         else if (gamepad1.left_trigger > 0.5 && !isFlicked) {
             Tickle.retract();
+            lastBlock = false;
             gamepad1.rumble(100);
             Intake.intakeBall(-1.0);
         }
@@ -152,8 +180,6 @@ public class TeleOP extends LinearOpMode {
                 lastTickle = true;
             }
         }
-
-
     }
     public void pad2() {
         // Turret control
@@ -166,18 +192,19 @@ public class TeleOP extends LinearOpMode {
             }
         }
         else {
-            Turret.turn((int)(gamepad2.left_stick_x * 20));
+            Turret.turn((int)(gamepad2.left_stick_x * 10));
         }
 
         // Flywheel shooting with PID velocity control
         if (gamepad2.right_trigger > 0.2) {
-            targetFlywheelVelocity = 1500;  // ticks/sec
+            targetFlywheelVelocity = Flywheel.calculateTargetVelocity(Ty);  // ticks/sec
             Flywheel.setTargetVelocity(targetFlywheelVelocity);
             isSpinningUp = true;
 
             // Auto-flick when flywheel reaches target speed (tolerance: 50 ticks/sec)
             if (Flywheel.isAtSpeed(50)) {
                 Tickle.flick();
+                lastFlicked = true;
             }
         }
         // Stop flywheel when trigger released
@@ -188,4 +215,3 @@ public class TeleOP extends LinearOpMode {
         }
     }
 }
-

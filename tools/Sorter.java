@@ -6,7 +6,7 @@ import com.qualcomm.robotcore.hardware.HardwareMap;
 public class Sorter {
     private static DcMotor sorter;
     static double target = 0;
-    static double motorPower = 0.2;
+    static double motorPower = 0.5;
     static double stepTicks = 128.66;
     static int currentPort = 0;
     static String[] ports = new String[3];
