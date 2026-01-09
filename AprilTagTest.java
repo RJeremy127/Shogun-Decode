@@ -11,7 +11,7 @@ import com.qualcomm.robotcore.hardware.Servo;
 import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.Pose3D;
 import org.firstinspires.ftc.teamcode.datatypes.Point;
-import org.firstinspires.ftc.teamcode.tools.JohnLimeLight;
+//import org.firstinspires.ftc.teamcode.tools.JohnLimeLight;
 
 import java.util.Arrays;
 import java.util.List;
@@ -62,27 +62,27 @@ public class AprilTagTest extends OpMode{
             Pose3D botpose = llresult.getBotpose();
             Pose3D botpose_mt2 = llresult.getBotpose_MT2();
 
-            Point mt1_postion = JohnLimeLight.getPosition(botpose);
-            Point mt2_position = JohnLimeLight.getPosition(botpose_mt2);
+            //Point mt1_postion = JohnLimeLight.getPosition(botpose);
+            //Point mt2_position = JohnLimeLight.getPosition(botpose_mt2);
 
-            int tagID = JohnLimeLight.getTagID(results);
-            motif = JohnLimeLight.getMotif(tagID);
+            //int tagID = JohnLimeLight.getTagID(results);
+            //motif = JohnLimeLight.getMotif(tagID);
             double Tx = llresult.getTx();
             double Ty = llresult.getTy();
             double Ta = llresult.getTa();
-            double distance = JohnLimeLight.getDistance(mountAngle, Ty, LmHeight, TagHeight);
+            //double distance = JohnLimeLight.getDistance(mountAngle, Ty, LmHeight, TagHeight);
 
             DistanceUnit unit = botpose.getPosition().unit;
 
-            JohnLimeLight.trackTag(turn, trackSpeed, Tx);
+            //JohnLimeLight.trackTag(turn, trackSpeed, Tx);
 
-            telemetry.addData("April Tag ", tagID);
+            //telemetry.addData("April Tag ", tagID);
             telemetry.addData("Target x", Tx);
             telemetry.addData("Target y", Ty);
             telemetry.addData("Target Area", Ta);
             //telemetry.addData("Yaw", botpose_mt2.getOrientation());
-            telemetry.addData("Distance", distance);
-            telemetry.addData("MT1 Coordinates", mt1_postion.toString());
+            //telemetry.addData("Distance", distance);
+            //telemetry.addData("MT1 Coordinates", mt1_postion.toString());
             telemetry.addData("Motif colors", Arrays.toString(motif));
             telemetry.addData("unit", unit.toString());
         }
