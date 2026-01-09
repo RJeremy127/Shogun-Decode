@@ -44,22 +44,11 @@ public class Turret {
     }
     //need AprilTag class
     public static void track(double tx) {
-        // PD controller gains - tune these for your turret
+        // P controller gain - tune this for your turret
         double kP = 0.015;  // Proportional gain (responsiveness)
-        double kD = 0.008;  // Derivative gain (dampening/smoothing)
 
-        // Calculate time delta
-        double currentTime = timer.seconds();
-        double dt = currentTime - lastTime;
-
-        // Calculate derivative (rate of change of error)
-        double derivative = 0;
-        if (dt > 0 && dt < 0.5) {  // Skip invalid or too-large time deltas
-            derivative = (tx - lastTx) / dt;
-        }
-
-        // PD control: combine proportional and derivative terms
-        double power = -(tx * kP + derivative * kD);
+        // P control: proportional term only
+        double power = -(tx * kP);
 
         // Clamp power to motor limits
         power = Math.max(-motorPower, Math.min(motorPower, power));
@@ -74,9 +63,5 @@ public class Turret {
                 motor.setPower(power);
             }
         }
-
-        // Update state for next iteration
-        lastTx = tx;
-        lastTime = currentTime;
     }
 }
