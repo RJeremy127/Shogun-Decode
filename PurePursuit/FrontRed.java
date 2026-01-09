@@ -26,7 +26,7 @@ public class FrontRed extends LinearOpMode {
         for (int i = 0; i<2;i++) {
             launch();
         }
-        Pose [] a = new Pose[]{new Pose(10, 0, Math.toRadians(0))};
+        Pose [] a = new Pose[]{new Pose(0, 10, Math.toRadians(0))};
         Route c = new Route(a);
         c.run(.2, .2);
     }

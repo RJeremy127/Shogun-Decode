@@ -23,7 +23,7 @@ public class BackRed extends LinearOpMode {
         for (int i = 0; i<2;i++) {
             launch();
         }
-        Pose [] p = new Pose[]{new Pose(-10, 10, Math.toRadians(0))};
+        Pose [] p = new Pose[]{new Pose(10, -10, Math.toRadians(0))};
         Route r = new Route(p);
         r.run(.2, .2);
     }
