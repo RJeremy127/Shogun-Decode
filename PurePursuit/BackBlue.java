@@ -53,6 +53,5 @@ public class BackBlue extends LinearOpMode {
         sleep(1000);
         Tickle.flick();
         Tickle.blockBall();
-        Sorter.turn(1);
     }
 }
