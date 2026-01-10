@@ -19,22 +19,19 @@ public class FrontBlue extends LinearOpMode {
         waitForStart();
 
         // turret/movement align
-        Pose [] p = new Pose[]{new Pose(-40, 40, Math.toRadians(0))};
+        Pose [] p = new Pose[]{new Pose(-40, 0, Math.toRadians(0))};
         Route r = new Route(p);
-        r.run(.2, .2);
+        r.run(.5, .2);
         //Turret.track();
-        for (int i = 0; i<2;i++) {
-            launch();
-        }
+        launch();
         Pose [] a = new Pose[]{new Pose(0, -10, Math.toRadians(0))};
         Route c = new Route(a);
-        c.run(.2, .2);
+        c.run(.5, .2);
     }
     public void launch() {
         Flywheel.setTargetVelocity(1550);
         sleep(1000);
         Tickle.flick();
         Tickle.blockBall();
-        Sorter.turn(1);
     }
 }

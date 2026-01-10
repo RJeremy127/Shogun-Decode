@@ -28,27 +28,33 @@ public class BackBlue extends LinearOpMode {
         waitForStart();
         //8 is blue
         //9 is red
-        lim.pipelineSwitch(9);
-        LLResult llresult = lim.getLatestResult();
+        lim.pipelineSwitch(8);
 
-        while (!(llresult != null && llresult.isValid())) {
-            Turret.turn(20);
-        }
 
-        do {
-            List<LLResultTypes.FiducialResult> results = llresult.getFiducialResults();
-            Tx = llresult.getTx();
-            Ty = llresult.getTy();
-        } while(Turret.autoTrack(Tx, Ty));
+            LLResult llresult = lim.getLatestResult();
+            while (!(llresult != null && llresult.isValid())) {
+                Turret.turn(-1);
+                llresult = lim.getLatestResult();
+            }
+
+            do {
+                List<LLResultTypes.FiducialResult> results = llresult.getFiducialResults();
+                Tx = llresult.getTx();
+                Ty = llresult.getTy();
+                llresult = lim.getLatestResult();
+            } while(Turret.autoTrack(Tx, Ty));
+
+
         launch();
-        Pose [] p = new Pose[]{new Pose(10, 10, Math.toRadians(0))};
+        Pose [] p = new Pose[]{new Pose(0, -20, Math.toRadians(0))};
         Route r = new Route(p);
-        r.run(.2, .2);
+        r.run(.5, .2);
     }
     public void launch() {
-        Flywheel.setTargetVelocity(1550);
-        sleep(1000);
+        Flywheel.setTargetVelocity(Flywheel.calculateTargetVelocity(Ty));
+        sleep(5000);
         Tickle.flick();
+        sleep(2000);
         Tickle.blockBall();
     }
 }
