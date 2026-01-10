@@ -246,7 +246,7 @@ public class TeleBlue extends LinearOpMode {
                 lastTickle = true;
                 autoRetractPending = false; // Cancel auto-retract if manually controlled
             }
-            else if (gamepad2.dpad_up){
+            if (gamepad2.dpad_up){
                 Tickle.flick();
                 lastTickle = true;
                 autoRetractPending = false; // Manual control overrides auto-retract
@@ -255,12 +255,18 @@ public class TeleBlue extends LinearOpMode {
         if (!gamepad2.dpad_up && !gamepad2.dpad_down) {
             lastTickle = false; // Reset when button is released
         }
-        // Manual flywheel control with left trigger (no auto-flick)
+        // Manual flywheel control with left trigger (with auto-flick)
         if (gamepad2.left_trigger > 0.2) {
             // Direct power control for manual flywheel operation
-            double manualPower = gamepad2.left_trigger;
-            Flywheel.run(manualPower);
-            isSpinningUp = false;
+            double manualPower = 1550;
+            Flywheel.setTargetVelocity(manualPower);
+            isSpinningUp = true;
+            if (Flywheel.isAtSpeed(20) && !autoRetractPending) {
+                gamepad2.rumble(2000);
+                Tickle.flick();
+                autoRetractPending = true;
+                flickTimer.reset();
+            }
         }
         // Flywheel shooting with PID velocity control and auto-flick
         else if (gamepad2.right_trigger > 0.2) {
