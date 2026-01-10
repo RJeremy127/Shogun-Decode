@@ -217,9 +217,7 @@ public class TeleRed extends LinearOpMode {
             Sorter.turn(-1);
         }
 
-        if (gamepad2.dpad_right && !isTrack) {
-            Turret.turn(5);   // Fine adjustment right
-        }
+
 
         //stop sorter
         if (gamepad2.circle) {
@@ -231,13 +229,14 @@ public class TeleRed extends LinearOpMode {
         }
          */
         // Manual turret control only when not in tracking mode
-        if (!isTrack && !gamepad2.square) {
-            Turret.turn((int)(-gamepad2.left_stick_x * 15));
+        if (gamepad2.dpad_right && !isTrack) {
+            Turret.turn(5);   // Fine adjustment right
         }
-
-        // Fine turret adjustment with dpad left/right
         if (gamepad2.dpad_left && !isTrack) {
-            Turret.turn(-5);  // Fine adjustment left
+            Turret.turn(-5);   // Fine adjustment right
+        }
+        if (!isTrack && !gamepad2.square) {
+            Turret.turn((int)(-gamepad2.left_stick_x * 10));
         }
         //flicker control
         if (gamepad2.dpad_down && !lastTickle) {
