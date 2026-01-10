@@ -35,15 +35,12 @@ public class BackBlue extends LinearOpMode {
             Turret.turn(20);
         }
 
-        if (llresult != null && llresult.isValid()) {
+        do {
             List<LLResultTypes.FiducialResult> results = llresult.getFiducialResults();
             Tx = llresult.getTx();
             Ty = llresult.getTy();
-            Turret.track(Tx, Ty);
-        }
-        for (int i = 0; i<2;i++) {
-            launch();
-        }
+        } while(Turret.autoTrack(Tx, Ty));
+        launch();
         Pose [] p = new Pose[]{new Pose(10, 10, Math.toRadians(0))};
         Route r = new Route(p);
         r.run(.2, .2);

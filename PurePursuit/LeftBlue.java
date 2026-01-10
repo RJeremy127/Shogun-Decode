@@ -19,6 +19,7 @@ public class LeftBlue extends LinearOpMode {
 
 
         Pose [] p = new Pose[]{new Pose(50, 0, Math.toRadians(90)), new Pose (50, 50, Math.toRadians(180)), new Pose (0, 50, Math.toRadians(270)), new Pose (0, 0, 0)};
+        Pose [] poses = new Pose[]{new Pose(0, 10, 0)};
         Route r = new Route(p);
         r.run(0.2, 0.2);
 
