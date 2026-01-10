@@ -76,4 +76,36 @@ public class Turret {
           //  motor.setPower(0);  // Stop motor when out of bounds
         //}
     }
+    public static boolean autoTrack(double tx, double ty) {
+        double kP = 0;
+        if (ty < 4) {
+            kP = 0.008;
+        }
+        else {
+            kP = 0.015;
+        }
+
+        // P control: proportional term only
+        double power = -(tx * kP);
+
+        // Clamp power to motor limits
+        power = Math.max(-motorPower, Math.min(motorPower, power));
+
+        motor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+
+        // Only track when within safe bounds (-1150 to -240)
+        //if (motor.getCurrentPosition() >= rightBound && motor.getCurrentPosition() <= leftBound) {
+        // Deadzone: stop when close enough to target
+        if (Math.abs(tx) < 3.0) {
+            motor.setPower(0);
+            return false;
+        } else {
+            motor.setPower(power);
+            return true;
+        }
+        //}
+        //else {
+        //  motor.setPower(0);  // Stop motor when out of bounds
+        //}
+    }
 }
