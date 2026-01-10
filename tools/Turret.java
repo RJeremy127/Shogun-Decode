@@ -31,11 +31,11 @@ public class Turret {
         motor.setTargetPosition(target);
         motor.setMode(DcMotor.RunMode.RUN_TO_POSITION);
         // Only power motor when within safe bounds (-1150 to -240)
-        if (motor.getCurrentPosition() >= rightBound && motor.getCurrentPosition() <= leftBound) {
-            motor.setPower(motorPower);
-        } else {
-            motor.setPower(0);  // Stop motor when out of bounds
-        }
+        //if (motor.getCurrentPosition() >= rightBound && motor.getCurrentPosition() <= leftBound) {
+        motor.setPower(motorPower);
+        //} else {
+         //   motor.setPower(0);  // Stop motor when out of bounds
+        //}
     }
 
     public static int getPosition() {
@@ -46,9 +46,14 @@ public class Turret {
         motor.setPower(0.0);
     }
     //need AprilTag class
-    public static void track(double tx) {
-        // P controller gain - tune this for your turret
-        double kP = 0.015;  // Proportional gain (responsiveness)
+    public static void track(double tx, double ty) {
+        double kP = 0;
+        if (ty < 4) {
+            kP = 0.008;
+        }
+        else {
+            kP = 0.015;
+        }
 
         // P control: proportional term only
         double power = -(tx * kP);
@@ -59,15 +64,16 @@ public class Turret {
         motor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
 
         // Only track when within safe bounds (-1150 to -240)
-        if (motor.getCurrentPosition() >= rightBound && motor.getCurrentPosition() <= leftBound) {
+        //if (motor.getCurrentPosition() >= rightBound && motor.getCurrentPosition() <= leftBound) {
             // Deadzone: stop when close enough to target
             if (Math.abs(tx) < 3.0) {
                 motor.setPower(0);
             } else {
                 motor.setPower(power);
             }
-        } else {
-            motor.setPower(0);  // Stop motor when out of bounds
-        }
+        //}
+        //else {
+          //  motor.setPower(0);  // Stop motor when out of bounds
+        //}
     }
 }
