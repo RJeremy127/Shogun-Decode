@@ -29,15 +29,10 @@
 
 package org.firstinspires.ftc.teamcode;
 
-import android.database.AbstractCursor;
-
 import com.qualcomm.hardware.limelightvision.LLResult;
 import com.qualcomm.hardware.limelightvision.LLResultTypes;
 import com.qualcomm.hardware.limelightvision.Limelight3A;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
-import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
-import com.qualcomm.robotcore.hardware.DcMotor;
-import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
 import org.firstinspires.ftc.robotcore.external.navigation.Pose3D;
@@ -52,12 +47,11 @@ import org.firstinspires.ftc.teamcode.tools.Tickle;
 import org.firstinspires.ftc.teamcode.tools.Turret;
 import org.firstinspires.ftc.teamcode.util.Actuation;
 
-import java.net.PortUnreachableException;
 import java.util.Arrays;
 import java.util.List;
 
-@TeleOp(name="Tele", group="Linear OpMode")
-public class TeleOP extends LinearOpMode {
+@com.qualcomm.robotcore.eventloop.opmode.TeleOp(name="FUCKYOU-RED", group="Linear OpMode")
+public class TeleRed extends LinearOpMode {
 
     // Declare OpMode members for each of the 4 motors.
     private ElapsedTime runtime = new ElapsedTime();
@@ -65,18 +59,20 @@ public class TeleOP extends LinearOpMode {
     private Limelight3A limelight;
     private boolean lastTickle = false;
     private boolean lastSquare = false;
+    private boolean lastTriangle2 = false;
+    private boolean isBlocking = false;
     private boolean isTrack = false;
     private boolean isFlicked = false;
     private boolean isSpinningUp = false;
     private double targetFlywheelVelocity = 0;
     private String previousBallColor = null;
-    private boolean lastFlicked = false;
     private boolean lastBlock = true;
+    private boolean previousLastBlock = false;
     private double Tx;
     private double Ty;
     private Point position = new Point(0,0);
     private boolean autoRetractPending = false;
-    private static final double RETRACT_DELAY_MS = 5000; // Time to wait before auto-retracting
+    private static final double RETRACT_DELAY_MS = 2000; // Time to wait before auto-retracting
 
     @Override
     public void runOpMode() {
@@ -107,11 +103,14 @@ public class TeleOP extends LinearOpMode {
                 position = JohnLimeLight.getPosition(botpose);
                 Tx = llresult.getTx();
                 Ty = llresult.getTy();
-                if (isTrack) {Turret.track(Tx);}
+                if (isTrack) {Turret.track(Tx, Ty);}
             }
-            if (lastBlock) {
+
+            // Auto-blocking: only call blockBall() when transitioning to enabled state
+            if (lastBlock && !previousLastBlock) {
                 Tickle.blockBall();
             }
+            previousLastBlock = lastBlock;
 
             // Auto-retract flickers after shooting
             if (autoRetractPending && flickTimer.milliseconds() >= RETRACT_DELAY_MS) {
@@ -148,7 +147,7 @@ public class TeleOP extends LinearOpMode {
             */
 
             telemetry.addData("Status", "Run Time: " + runtime.toString());
-            telemetry.addData("Servo Pos: ", Tickle.getPosition());
+            telemetry.addData("Sorter pos: ", Sorter.getPosition());
             telemetry.addData("Is tracking: ", isTrack);
             telemetry.addData("Color: ", Color.getColor());
             telemetry.addData("RGB: ", Arrays.toString(Color.getRGB()));
@@ -184,13 +183,6 @@ public class TeleOP extends LinearOpMode {
         else {
             Intake.stop();
         }
-        if (gamepad1.right_bumper && !Sorter.isBusy() && !isFlicked) {
-            Sorter.turn(1);
-        }
-        if (gamepad1.left_bumper && !Sorter.isBusy() && !isFlicked) {
-            Sorter.turn(-1);
-        }
-
     }
     public void pad2() {
         // Turret control - toggle tracking mode
@@ -201,48 +193,93 @@ public class TeleOP extends LinearOpMode {
         if (!gamepad2.square) {
             lastSquare = false;  // Reset when button is released
         }
+
+        // Toggle blockBall/retract with gamepad2.triangle
+        if (gamepad2.triangle && !lastTriangle2) {
+            if (isBlocking) {
+                Tickle.retract();
+                isBlocking = false;
+                lastBlock = true;
+            } else {
+                Tickle.blockBall();
+                isBlocking = true;
+                lastBlock = false;
+            }
+            lastTriangle2 = true;
+        }
+        if (!gamepad2.triangle) {
+            lastTriangle2 = false;  // Reset when button is released
+        }
+
         //sorter
-        if (gamepad1.right_bumper && !Sorter.isBusy() && !isFlicked) {
+        /*
+        if (gamepad2.right_bumper && !Sorter.isBusy() && !isFlicked) {
             Sorter.turn(1);
         }
-        if (gamepad1.left_bumper && !Sorter.isBusy() && !isFlicked) {
+        if (gamepad2.left_bumper && !Sorter.isBusy() && !isFlicked) {
             Sorter.turn(-1);
         }
+
+        if (gamepad2.dpad_right && !isTrack) {
+            Turret.turn(5);   // Fine adjustment right
+        }
+
+        //stop sorter
+        if (gamepad2.circle) {
+            Sorter.stop();
+        }
+        //run to start position
+        if (gamepad2.cross) {
+            Sorter.setStart();
+        }
+         */
         // Manual turret control only when not in tracking mode
         if (!isTrack && !gamepad2.square) {
-            Turret.turn((int)(gamepad2.left_stick_x * 20));
+            Turret.turn((int)(-gamepad2.left_stick_x * 15));
+        }
+
+        // Fine turret adjustment with dpad left/right
+        if (gamepad2.dpad_left && !isTrack) {
+            Turret.turn(-5);  // Fine adjustment left
         }
         //flicker control
-        if (gamepad1.dpad_down && !lastTickle) {
+        if (gamepad2.dpad_down && !lastTickle) {
             if (Tickle.getStatus()) {
                 Tickle.retract();
                 lastTickle = true;
                 autoRetractPending = false; // Cancel auto-retract if manually controlled
             }
-            else if (gamepad1.dpad_up){
+            else if (gamepad2.dpad_up){
                 Tickle.flick();
                 lastTickle = true;
                 autoRetractPending = false; // Manual control overrides auto-retract
             }
         }
-        if (!gamepad1.dpad_up || !gamepad1.dpad_down) {
+        if (!gamepad2.dpad_up && !gamepad2.dpad_down) {
             lastTickle = false; // Reset when button is released
         }
-        // Flywheel shooting with PID velocity control
-        if (gamepad2.right_trigger > 0.2) {
+        // Manual flywheel control with left trigger (no auto-flick)
+        if (gamepad2.left_trigger > 0.2) {
+            // Direct power control for manual flywheel operation
+            double manualPower = gamepad2.left_trigger;
+            Flywheel.run(manualPower);
+            isSpinningUp = false;
+        }
+        // Flywheel shooting with PID velocity control and auto-flick
+        else if (gamepad2.right_trigger > 0.2) {
             targetFlywheelVelocity = Flywheel.calculateTargetVelocity(Ty);  // ticks/sec
             Flywheel.setTargetVelocity(targetFlywheelVelocity);
             isSpinningUp = true;
 
-            // Auto-flick when flywheel reaches target speed (tolerance: 50 ticks/sec)
+            // Auto-flick when flywheel reaches target speed (tolerance: 20 ticks/sec)
             if (Flywheel.isAtSpeed(20) && !autoRetractPending) {
+                gamepad2.rumble(2000);
                 Tickle.flick();
-                lastFlicked = true;
                 autoRetractPending = true;
                 flickTimer.reset();
             }
         }
-        // Stop flywheel when trigger released
+        // Stop flywheel when both triggers released
         else {
             targetFlywheelVelocity = 0;
             Flywheel.setTargetVelocity(0);

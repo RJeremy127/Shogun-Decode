@@ -39,7 +39,7 @@ public class BackBlue extends LinearOpMode {
             List<LLResultTypes.FiducialResult> results = llresult.getFiducialResults();
             Tx = llresult.getTx();
             Ty = llresult.getTy();
-            Turret.track(Tx);
+            Turret.track(Tx, Ty);
         }
         for (int i = 0; i<2;i++) {
             launch();
