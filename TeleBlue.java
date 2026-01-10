@@ -50,7 +50,7 @@ import org.firstinspires.ftc.teamcode.util.Actuation;
 import java.util.Arrays;
 import java.util.List;
 
-@com.qualcomm.robotcore.eventloop.opmode.TeleOp(name="FUCKYOU-BLUE", group="Linear OpMode")
+@com.qualcomm.robotcore.eventloop.opmode.TeleOp(name="TELE-BLUE", group="Linear OpMode")
 public class TeleBlue extends LinearOpMode {
 
     // Declare OpMode members for each of the 4 motors.
@@ -147,10 +147,7 @@ public class TeleBlue extends LinearOpMode {
             */
 
             telemetry.addData("Status", "Run Time: " + runtime.toString());
-            telemetry.addData("Sorter pos: ", Sorter.getPosition());
             telemetry.addData("Is tracking: ", isTrack);
-            telemetry.addData("Color: ", Color.getColor());
-            telemetry.addData("RGB: ", Arrays.toString(Color.getRGB()));
             telemetry.addData("Flywheel Target: ", String.format("%.0f", targetFlywheelVelocity));
             telemetry.addData("Flywheel Ready: ", isSpinningUp && Flywheel.isAtSpeed(50));
             telemetry.addData("Tx: ", Tx);

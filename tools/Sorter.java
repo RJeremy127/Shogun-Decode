@@ -37,9 +37,9 @@ public class Sorter {
 
     public static String[] getPorts() {return ports;}
 
-    public static int getPosition() {
-        return sorter.getCurrentPosition();
-    }
+    //public static int getPosition() {
+     //   return sorter.getCurrentPosition();
+    //}
 
     public static boolean isBusy() {return sorter.isBusy();}
     public static boolean isFull() {

@@ -10,7 +10,7 @@ Flicker1 -- Port 1
 Flicker2 -- Port 2
 
 backLeft -- Port 0 Expansion
-frontLeft -- Port 1 Control
+frontLeft -- Port 1 Expansion
 
 backRight -- Port 2 Control
 frontRight -- Port 1 Control
