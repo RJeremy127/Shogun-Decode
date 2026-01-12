@@ -29,7 +29,7 @@ public class Actuation {
         RobotMovement.setup(startPose, t);
 
         Intake.init(map);
-        //Sorter.init(map);
+        Sorter.init(map);
         Turret.init(map);
         Flywheel.init(map);
         Tickle.init(map);

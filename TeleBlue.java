@@ -72,6 +72,7 @@ public class TeleBlue extends LinearOpMode {
     private double Ty;
     private Point position = new Point(0,0);
     private boolean autoRetractPending = false;
+    private boolean leftTriggerOffsetApplied = false;
     private static final double RETRACT_DELAY_MS = 2000; // Time to wait before auto-retracting
 
     @Override
@@ -256,11 +257,18 @@ public class TeleBlue extends LinearOpMode {
             lastTickle = false; // Reset when button is released
         }
         // Manual flywheel control with left trigger (with auto-flick)
+        // For long-range shots - turret adjusts slightly left to compensate
         if (gamepad2.left_trigger > 0.2) {
             // Direct power control for manual flywheel operation
             double manualPower = 1550;
             Flywheel.setTargetVelocity(manualPower);
             isSpinningUp = true;
+
+            // Slight left turret adjustment for long-range compensation
+            if (!isTrack) {
+                Turret.turn(-2);  // Negative = left
+            }
+
             if (Flywheel.isAtSpeed(20) && !autoRetractPending) {
                 gamepad2.rumble(2000);
                 Tickle.flick();

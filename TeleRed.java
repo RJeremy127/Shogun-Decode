@@ -72,6 +72,7 @@ public class TeleRed extends LinearOpMode {
     private double Ty;
     private Point position = new Point(0,0);
     private boolean autoRetractPending = false;
+    private boolean leftTriggerOffsetApplied = false;
     private static final double RETRACT_DELAY_MS = 2000; // Time to wait before auto-retracting
 
     @Override
@@ -180,6 +181,12 @@ public class TeleRed extends LinearOpMode {
         else {
             Intake.stop();
         }
+        if (gamepad1.right_bumper) {
+            Sorter.turn(1);
+        }
+        if (gamepad1.left_bumper) {
+            Sorter.turn(-1);
+        }
     }
     public void pad2() {
         // Turret control - toggle tracking mode
@@ -260,6 +267,7 @@ public class TeleRed extends LinearOpMode {
             double manualPower = 1550;
             Flywheel.setTargetVelocity(manualPower);
             isSpinningUp = true;
+
             if (Flywheel.isAtSpeed(20) && !autoRetractPending) {
                 gamepad2.rumble(2000);
                 Tickle.flick();
