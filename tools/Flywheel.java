@@ -9,7 +9,7 @@ import com.qualcomm.robotcore.util.ElapsedTime;
 public class Flywheel {
     private static DcMotorEx wheel;
 
-    // PID gains - tune these for your flywheel
+    // PID gains
     private static double kP = 0.0037;
     private static double kI = 0.0;
     private static double kD = 0.000008;
@@ -23,7 +23,7 @@ public class Flywheel {
     private static double lastTime = 0;
 
     // Anti-windup limit
-    private static double integralMax = 1.0;
+    private static double integralMax = 0.3;
 
     public static void init(HardwareMap map) {
         wheel = map.get(DcMotorEx.class, "flywheel");
@@ -118,6 +118,10 @@ public class Flywheel {
     }
 
     public static double calculateTargetVelocity(double Ty) {
-        return -34.24658 * Ty + 1842.97945;
+        // Cubic equation: y = -0.43855x³ + 18.60014x² - 284.7872x + 2855.66642
+        return (-0.43855 * Math.pow(Ty, 3)) +
+               (18.60014 * Math.pow(Ty, 2)) +
+               (-284.7872 * Ty) +
+               2855.66642;
     }
 }
