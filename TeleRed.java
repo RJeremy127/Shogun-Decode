@@ -72,6 +72,7 @@ public class TeleRed extends LinearOpMode {
     private double Ty;
     private Point position = new Point(0,0);
     private boolean autoRetractPending = false;
+    private boolean leftTriggerOffsetApplied = false;
     private static final double RETRACT_DELAY_MS = 2000; // Time to wait before auto-retracting
 
     @Override
@@ -94,8 +95,9 @@ public class TeleRed extends LinearOpMode {
             isFlicked = Tickle.getStatus();
             LLResult llresult = limelight.getLatestResult();
             //if (!Intake.isBusy()) {Tickle.blockBall();}
-            // Update flywheel PID controller
+            // Update PID controllers
             Flywheel.update();
+            Sorter.update();
 
             if (llresult != null && llresult.isValid()) {
                 List<LLResultTypes.FiducialResult> results = llresult.getFiducialResults();
@@ -155,6 +157,8 @@ public class TeleRed extends LinearOpMode {
             telemetry.addData("Position: ", position.toString());
             telemetry.addData("Turret Position: ", Turret.getPosition());
             telemetry.addData("Ball Color: ", Arrays.toString(Sorter.getPorts()));
+            telemetry.addData("Sorter Pos: ", Sorter.getPosition());
+            telemetry.addData("Sorter Target: ", Sorter.getTargetPosition());
             telemetry.update();
         }
     }
@@ -180,11 +184,21 @@ public class TeleRed extends LinearOpMode {
         else {
             Intake.stop();
         }
+        if (gamepad1.right_bumper && !Sorter.isBusy()) {
+            Sorter.turn(1);
+        }
+        if (gamepad1.left_bumper && !Sorter.isBusy()) {
+            Sorter.turn(-1);
+        }
     }
     public void pad2() {
         // Turret control - toggle tracking mode
         if (gamepad2.square && !lastSquare) {
             isTrack = !isTrack;  // Toggle tracking mode
+            if (!isTrack) {
+                Turret.resetPID();  // Reset PID state when disabling tracking
+                Turret.stop();
+            }
             lastSquare = true;
         }
         if (!gamepad2.square) {
@@ -260,6 +274,7 @@ public class TeleRed extends LinearOpMode {
             double manualPower = 1550;
             Flywheel.setTargetVelocity(manualPower);
             isSpinningUp = true;
+
             if (Flywheel.isAtSpeed(20) && !autoRetractPending) {
                 gamepad2.rumble(2000);
                 Tickle.flick();

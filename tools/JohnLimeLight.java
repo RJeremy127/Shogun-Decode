@@ -17,11 +17,15 @@ public class JohnLimeLight {
     private IMU imu;
 
     private ColorSensor color;
-    public enum Alliance {BLUE, RED}
 
-
-    public static YawPitchRollAngles getOrientation(IMU imu) { return imu.getRobotYawPitchRollAngles();
+    public enum Alliance {
+        BLUE, RED
     }
+
+    public static YawPitchRollAngles getOrientation(IMU imu) {
+        return imu.getRobotYawPitchRollAngles();
+    }
+
     public static int getTagID(List<LLResultTypes.FiducialResult> results) {
         int id = 0;
         for (LLResultTypes.FiducialResult fiducial : results) {
@@ -38,19 +42,17 @@ public class JohnLimeLight {
 
     public static String[] getMotif(int tagId) {
         String[] motif = {};
-          if (tagId == 21)  {
-              motif = new String[]{"G", "P", "P"};
-              return motif;
-          }
-          else if (tagId == 22) {
-              motif = new String[]{"P", "G", "P"};
-              return motif;
-          }
-          else if (tagId == 23) {
-              motif = new String[] {"P", "P", "G"};
-              return motif;
-          }
-          return motif;
+        if (tagId == 21) {
+            motif = new String[] { "G", "P", "P" };
+            return motif;
+        } else if (tagId == 22) {
+            motif = new String[] { "P", "G", "P" };
+            return motif;
+        } else if (tagId == 23) {
+            motif = new String[] { "P", "P", "G" };
+            return motif;
+        }
+        return motif;
     }
 
     public static Point getPosition(Pose3D botpose) {
@@ -60,20 +62,18 @@ public class JohnLimeLight {
             x *= 39.3701;
             y *= 39.3701;
             return new Point(x, y);
-        }
-        else {
+        } else {
             return null;
         }
     }
 
     public static void trackTag(DcMotor motor, double maxTurnSpeed, double tx) {
         double kP = 0.015;
-        double power = -tx*kP;
+        double power = -tx * kP;
         power = Math.max(-maxTurnSpeed, Math.min(maxTurnSpeed, power));
         if (Math.abs(tx) < 3.0) {
             motor.setPower(0);
-        }
-        else {
+        } else {
 
             motor.setPower(power);
         }
@@ -82,18 +82,17 @@ public class JohnLimeLight {
     public static boolean inZone(Point point) {
         double y = point.getY();
         double x = point.getX();
-        if (((y < 72) && (y > Math.abs(x))) || ((y > 72) && (y < -Math.abs(x)-48))) {
+        if (((y < 72) && (y > Math.abs(x))) || ((y > 72) && (y < -Math.abs(x) - 48))) {
             return true;
-        }
-        else {
+        } else {
             return false;
         }
     }
 
     public static void switchToGoalPipeLine(Limelight3A limelight, Alliance alliance) {
         // pipeline 8 = blue
-        //pipeline 9 = red
-        limelight.pipelineSwitch(alliance == Alliance.BLUE ? 8:9);
+        // pipeline 9 = red
+        limelight.pipelineSwitch(alliance == Alliance.BLUE ? 8 : 9);
     }
 
     public static void switchToObelisk(Limelight3A limelight) {

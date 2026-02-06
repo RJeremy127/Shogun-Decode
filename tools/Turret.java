@@ -8,17 +8,25 @@ import com.qualcomm.robotcore.util.ElapsedTime;
 
 public class Turret {
     private static DcMotor motor;
-    private static int maxTicks = 1538;
-    private static int ticks = 700;
-    private static double motorPower = 0.8;
+    //PID
+    private static double kP = 0.01;
+    private static double kI = 0.0001;
+    private static double kD = 0.0008;
+
+    private static int maxTicks = -199;
+    private static int minTicks = 230;
+    private static double motorPower = 0.6;
     private static int target = 0;
 
-    // PD controller state
+    // PID controller state
     private static double lastTx = 0;
+    private static double integralSum = 0;
     private static ElapsedTime timer = new ElapsedTime();
     private static double lastTime = 0;
-    private static int leftBound = -240;
-    private static int rightBound = -1150;
+    // Tracking deadzone (tx values within this range are considered "on target")
+    private static double minTx = -0.5;
+    private static double maxTx = 0.5;
+    private static double integralMax = 0.3;
 
     public static void init(HardwareMap map) {
         motor = map.get(DcMotor.class, "turnTable");
@@ -47,65 +55,66 @@ public class Turret {
     }
     //need AprilTag class
     public static void track(double tx, double ty) {
-        double kP = 0;
-        if (ty < 4) {
-            kP = 0.008;
-        }
-        else {
-            kP = 0.015;
-        }
-
-        // P control: proportional term only
-        double power = -(tx * kP);
-
-        // Clamp power to motor limits
-        power = Math.max(-motorPower, Math.min(motorPower, power));
+        double currentTime = timer.seconds();
+        double dt = currentTime - lastTime;
+        lastTime = currentTime;
+        dt = Math.max(dt, 1e-3);
 
         motor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
 
-        // Only track when within safe bounds (-1150 to -240)
-        //if (motor.getCurrentPosition() >= rightBound && motor.getCurrentPosition() <= leftBound) {
-            // Deadzone: stop when close enough to target
-            if (Math.abs(tx) < 3.0) {
-                motor.setPower(0);
-            } else {
-                motor.setPower(power);
-            }
-        //}
-        //else {
-          //  motor.setPower(0);  // Stop motor when out of bounds
-        //}
+        // Deadzone: stop when tx is within tolerance
+        if (tx >= minTx && tx <= maxTx) {
+            motor.setPower(0);
+            integralSum = 0;
+            lastTx = 0;
+            return;
+        }
+
+        double error = -tx;
+
+        // Reset integral on sign change (prevents overshoot)
+        if (lastTx != 0 && Math.signum(error) != Math.signum(lastTx)) {
+            integralSum = 0;
+        }
+
+        // Integral with anti-windup
+        integralSum += error * dt;
+        integralSum = Math.max(-integralMax, Math.min(integralMax, integralSum));
+
+        // Derivative
+        double derivative = (error - lastTx) / dt;
+
+        // PID output
+        double power = (kP * error) + (kI * integralSum) + (kD * derivative);
+        power = Math.max(-motorPower, Math.min(motorPower, power));
+
+        // Bounds checking
+        int turretPos = motor.getCurrentPosition();
+        if (turretPos <= minTicks && power < 0) {
+            power = 0;
+            integralSum = 0;
+        } else if (turretPos >= maxTicks && power > 0) {
+            power = 0;
+            integralSum = 0;
+        }
+
+        motor.setPower(-power);
+        lastTx = error;
     }
     public static boolean autoTrack(double tx, double ty) {
-        double kP = 0;
-        if (ty < 4) {
-            kP = 0.008;
-        }
-        else {
-            kP = 0.015;
-        }
+        // Use track() method for consistent PID behavior
+        track(tx, ty);
+        // Return true if still tracking (not in deadzone)
+        return !(tx >= minTx && tx <= maxTx);
+    }
 
-        // P control: proportional term only
-        double power = -(tx * kP);
+    public static void resetPID() {
+        integralSum = 0;
+        lastTx = 0;
+        lastTime = timer.seconds();
+    }
 
-        // Clamp power to motor limits
-        power = Math.max(-motorPower, Math.min(motorPower, power));
-
-        motor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
-
-        // Only track when within safe bounds (-1150 to -240)
-        //if (motor.getCurrentPosition() >= rightBound && motor.getCurrentPosition() <= leftBound) {
-        // Deadzone: stop when close enough to target
-        if (Math.abs(tx) < 3.0) {
-            motor.setPower(0);
-            return false;
-        } else {
-            motor.setPower(power);
-            return true;
-        }
-        //}
-        //else {
-        //  motor.setPower(0);  // Stop motor when out of bounds
-        //}
+    public static boolean isInDeadzone(double tx) {
+        return tx >= minTx && tx <= maxTx;
     }
 }
