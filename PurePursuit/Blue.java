@@ -10,7 +10,7 @@ import org.firstinspires.ftc.teamcode.util.Actuation;
 
 @Autonomous(name="Blue")
 
-public class LeftBlue extends LinearOpMode {
+public class Blue extends LinearOpMode {
     @Override
     public void runOpMode() {
         Actuation.setup(hardwareMap, new Pose(0,0,0), telemetry);
@@ -20,7 +20,7 @@ public class LeftBlue extends LinearOpMode {
 
 
         Pose [] p = new Pose[]{new Pose(50, 0, Math.toRadians(90)), new Pose (50, 50, Math.toRadians(180)), new Pose (0, 50, Math.toRadians(270)), new Pose (0, 0, 0)};
-        Pose [] poses = new Pose[]{new Pose(0, 10, 0)};
+        Pose [] poses = new Pose[]{new Pose(0, -10, 0)};
         Route r = new Route(poses);
         r.run(0.5, 0.2);
 

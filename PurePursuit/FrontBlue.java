@@ -10,7 +10,7 @@ import org.firstinspires.ftc.teamcode.tools.Tickle;
 import org.firstinspires.ftc.teamcode.tools.Turret;
 import org.firstinspires.ftc.teamcode.util.Actuation;
 
-@Autonomous(name="FrontBlue")
+//@Autonomous(name="FrontBlue")
 public class FrontBlue extends LinearOpMode {
     public void runOpMode() {
         Actuation.setup(hardwareMap, new Pose(0,0,0), telemetry);
@@ -23,6 +23,10 @@ public class FrontBlue extends LinearOpMode {
         Route r = new Route(p);
         r.run(.5, .2);
         //Turret.track();
+        launch();
+        Sorter.turn(1);
+        launch();
+        Sorter.turn(1);
         launch();
         Pose [] a = new Pose[]{new Pose(0, -10, Math.toRadians(0))};
         Route c = new Route(a);
