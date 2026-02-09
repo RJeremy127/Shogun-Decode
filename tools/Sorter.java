@@ -1,5 +1,7 @@
 package org.firstinspires.ftc.teamcode.tools;
 
+import static org.firstinspires.ftc.teamcode.clawtest.sleep;
+
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.qualcomm.robotcore.util.ElapsedTime;
@@ -9,8 +11,9 @@ public class Sorter {
     static int targetPosition = 0;
     static double stepTicks = 128.6666666;
     static int currentPort = 0;
+    static int firePort = 2;
     private static int startPos = 1;
-    static String[] ports = new String[3];
+    static String[] ports = new String[3]; // "P", "G", or null
 
     // PID gains
     private static double kP = 0.01;
@@ -40,6 +43,7 @@ public class Sorter {
         targetPosition += (int)(stepTicks * turns);
         // Calculate current port (handle negative modulo correctly)
         currentPort = ((currentPort + turns) % 3 + 3) % 3;
+        firePort = ((firePort+turns)%3+3)%3;
     }
 
     public static void turnToPort(int port) {
@@ -120,5 +124,35 @@ public class Sorter {
         targetPosition = startPos;
         currentPort = 0;  // Assume start position is port 0
         resetPID();
+    }
+
+    public static void organizeFire(String [] ballSequence) {
+        int firePort = (currentPort+2)%3;
+        targetPosition -= (int)(stepTicks)/2;
+        for (int i = 0; i<3;i++) {
+            if (ballSequence[i].equals(ports[firePort])) {
+                Sorter.update();
+                //launch
+            }
+            if (ballSequence[i].equals(ports[((firePort-1)%3+3)%3])) {
+                turn(1);
+                Sorter.update();
+                //launch
+            }
+            if ((ballSequence[i].equals(ports[(firePort+1)%3]))) {
+                turn(-1);
+                Sorter.update();
+                //launch
+            }
+        }
+        targetPosition += (int)(stepTicks)/2;
+        currentPort = 0;
+        Sorter.update();
+    }
+    public static void fireAtWill() {
+        targetPosition -= (int)(stepTicks)/2;
+        turn(1);
+        //launch
+        // return back to original position and set currentPort to 0
     }
 }

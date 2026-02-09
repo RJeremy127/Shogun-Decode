@@ -15,7 +15,7 @@ import org.firstinspires.ftc.teamcode.util.Actuation;
 
 import java.util.List;
 
-@Autonomous(name="BackRed")
+//@Autonomous(name="BackRed")
 public class BackRed extends LinearOpMode {
     private Limelight3A lim;
     double Tx, Ty;
