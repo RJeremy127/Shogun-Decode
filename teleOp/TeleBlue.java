@@ -27,7 +27,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-package org.firstinspires.ftc.teamcode;
+package org.firstinspires.ftc.teamcode.teleOp;
 
 import com.qualcomm.hardware.limelightvision.LLResult;
 import com.qualcomm.hardware.limelightvision.LLResultTypes;
@@ -38,7 +38,6 @@ import com.qualcomm.robotcore.util.ElapsedTime;
 import org.firstinspires.ftc.robotcore.external.navigation.Pose3D;
 import org.firstinspires.ftc.teamcode.datatypes.Point;
 import org.firstinspires.ftc.teamcode.datatypes.Pose;
-import org.firstinspires.ftc.teamcode.tools.Color;
 import org.firstinspires.ftc.teamcode.tools.Flywheel;
 import org.firstinspires.ftc.teamcode.tools.Intake;
 import org.firstinspires.ftc.teamcode.tools.JohnLimeLight;
@@ -89,6 +88,7 @@ public class TeleBlue extends LinearOpMode {
         //9 is Red
         limelight.pipelineSwitch(8);
         runtime.reset();
+
 
         // run until the end of the match (driver presses STOP)
         while (opModeIsActive()) {
