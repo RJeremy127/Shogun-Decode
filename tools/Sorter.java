@@ -134,12 +134,12 @@ public class Sorter {
                 Sorter.update();
                 //launch
             }
-            if (ballSequence[i].equals(ports[((firePort-1)%3+3)%3])) {
+            else if (ballSequence[i].equals(ports[((firePort-1)%3+3)%3])) {
                 turn(1);
                 Sorter.update();
                 //launch
             }
-            if ((ballSequence[i].equals(ports[(firePort+1)%3]))) {
+            else if ((ballSequence[i].equals(ports[(firePort+1)%3]))) {
                 turn(-1);
                 Sorter.update();
                 //launch
