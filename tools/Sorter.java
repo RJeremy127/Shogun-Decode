@@ -11,7 +11,6 @@ public class Sorter {
     static int targetPosition = 0;
     static double stepTicks = 128.6666666;
     static int currentPort = 0;
-    static int firePort = 2;
     private static int startPos = 1;
     static String[] ports = new String[3]; // "P", "G", or null
 
@@ -43,7 +42,6 @@ public class Sorter {
         targetPosition += (int)(stepTicks * turns);
         // Calculate current port (handle negative modulo correctly)
         currentPort = ((currentPort + turns) % 3 + 3) % 3;
-        firePort = ((firePort+turns)%3+3)%3;
     }
 
     public static void turnToPort(int port) {
@@ -143,6 +141,9 @@ public class Sorter {
                 turn(-1);
                 Sorter.update();
                 //launch
+            }
+            else {
+                break;
             }
         }
         targetPosition += (int)(stepTicks)/2;
