@@ -85,8 +85,15 @@ public class TeleRed extends LinearOpMode {
         waitForStart();
         limelight.pipelineSwitch(9);
         runtime.reset();
+        Turret.setRobotHeading(0);
 
         while (opModeIsActive()) {
+            // Update odometry for heading feedback
+            Actuation.otto.updateOdometry();
+
+            // Field-centric turret compensation
+            Turret.compensateRotation(Actuation.otto.getPose().getR());
+
             isFlicked = Tickle.getStatus();
             LLResult llresult = limelight.getLatestResult();
 

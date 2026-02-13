@@ -28,11 +28,59 @@ public class Turret {
     private static double maxTx = 0.5;
     private static double integralMax = 0.3;
 
+    // Field-centric heading compensation
+    // Gear ratio 8:27 (27/8 = 3.375 reduction), motor TPR ~384.5
+    // ticksPerRadian = 384.5 * (27.0/8.0) / (2 * Math.PI) ≈ 206.5
+    public static double ticksPerRadian = 206.5;
+    private static double lastRobotHeading = 0;
+    private static boolean fieldCentricEnabled = true;
+    private static double headingCompensationPower = 0; // feedforward for tracking mode
+
     public static void init(HardwareMap map) {
         motor = map.get(DcMotor.class, "turnTable");
         timer.reset();
         lastTime = 0;
         lastTx = 0;
+        lastRobotHeading = 0;
+        headingCompensationPower = 0;
+    }
+
+    public static void setRobotHeading(double heading) {
+        lastRobotHeading = heading;
+        headingCompensationPower = 0;
+    }
+
+    public static void compensateRotation(double currentHeading) {
+        if (!fieldCentricEnabled) return;
+
+        double deltaHeading = currentHeading - lastRobotHeading;
+        lastRobotHeading = currentHeading;
+
+        if (Math.abs(deltaHeading) < 1e-6) {
+            headingCompensationPower = 0;
+            return;
+        }
+
+        int deltaTicks = (int) (-deltaHeading * ticksPerRadian);
+
+        // Adjust the RUN_TO_POSITION target (used when not tracking)
+        target += deltaTicks;
+        if (motor.getMode() == DcMotor.RunMode.RUN_TO_POSITION) {
+            motor.setTargetPosition(target);
+        }
+
+        // Store compensation as feedforward power for tracking mode
+        // Scale: convert tick delta to proportional power
+        headingCompensationPower = -deltaHeading * ticksPerRadian * kP;
+        headingCompensationPower = Math.max(-motorPower, Math.min(motorPower, headingCompensationPower));
+    }
+
+    public static void setFieldCentricEnabled(boolean enabled) {
+        fieldCentricEnabled = enabled;
+    }
+
+    public static boolean isFieldCentricEnabled() {
+        return fieldCentricEnabled;
     }
     public static void turn(int ticks) {
         target += ticks;
@@ -97,6 +145,11 @@ public class Turret {
             power = 0;
             integralSum = 0;
         }
+
+        // Add heading feedforward for field-centric compensation
+        power += headingCompensationPower;
+        power = Math.max(-motorPower, Math.min(motorPower, power));
+        headingCompensationPower = 0; // consume the feedforward
 
         motor.setPower(-power);
         lastTx = error;
