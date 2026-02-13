@@ -15,17 +15,30 @@ public class Color {
     public static void detectColor() {
         rgb = new int[]{color.red(), color.green(), color.blue()};
     }
+    // Purple detection ranges
+    private static final int purpleRedMin = 2000, purpleRedMax = 3000;
+    private static final int purpleGreenMin = 2000, purpleGreenMax = 4000;
+    private static final int purpleBlueMin = 3600, purpleBlueMax = 6000;
+
+    // Green detection ranges
+    private static final int greenRedMin = 700, greenRedMax = 1900;
+    private static final int greenGreenMin = 3800, greenGreenMax = 7000;
+    private static final int greenBlueMin = 2000, greenBlueMax = 4000;
+
     public static String getColor() {
-         //[0]: Red [1]: Green [2]: Blue
         detectColor();
-        if (rgb[1] > rgb[0] && rgb[1] > rgb[2] && rgb[0] > 100 && rgb[2] > 100) {
-            ballColor = "G";
-        }
-        else if (rgb[2] > rgb[1] && rgb[2] > rgb[0] && rgb[0] > 500 && rgb[1] > 500) {
+        int r = rgb[0], g = rgb[1], b = rgb[2];
+
+        if (r >= purpleRedMin && r <= purpleRedMax
+                && g >= purpleGreenMin && g <= purpleGreenMax
+                && b >= purpleBlueMin && b <= purpleBlueMax) {
             ballColor = "P";
-        }
-        else{
-            ballColor =  null;
+        } else if (r >= greenRedMin && r <= greenRedMax
+                && g >= greenGreenMin && g <= greenGreenMax
+                && b >= greenBlueMin && b <= greenBlueMax) {
+            ballColor = "G";
+        } else {
+            ballColor = null;
         }
         return getBallColor();
     }

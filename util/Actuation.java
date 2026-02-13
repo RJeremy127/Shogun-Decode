@@ -33,7 +33,7 @@ public class Actuation {
         Turret.init(map);
         Flywheel.init(map);
         Tickle.init(map);
-        //Color.init(map);
+        Color.init(map);
     }
 
     //axial = x, vertical
