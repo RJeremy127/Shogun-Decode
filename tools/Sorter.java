@@ -10,6 +10,8 @@ public class Sorter {
     private static DcMotor sorter;
     static int targetPosition = 0;
     static double stepTicks = 128.6666666;
+    public static double shootingModeOffset = 64.3333333;
+    private static boolean inShootingMode = false;
     static int currentPort = 0;
     private static int startPos = 1;
     static String[] ports = new String[3]; // "P", "G", or null
@@ -110,6 +112,31 @@ public class Sorter {
             }
         }
         return true;
+    }
+
+    public static void enterShootingMode() {
+        if (!inShootingMode) {
+            targetPosition += (int) shootingModeOffset;
+            inShootingMode = true;
+        }
+    }
+
+    public static void exitShootingMode() {
+        if (inShootingMode) {
+            targetPosition -= (int) shootingModeOffset;
+            inShootingMode = false;
+        }
+    }
+
+    public static boolean isInShootingMode() {
+        return inShootingMode;
+    }
+
+    public static void clearPorts() {
+        for (int i = 0; i < ports.length; i++) {
+            ports[i] = null;
+        }
+        currentPort = 0;
     }
 
     public static void stop() {

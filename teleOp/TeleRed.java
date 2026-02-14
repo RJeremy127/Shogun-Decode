@@ -1,32 +1,3 @@
-/* Copyright (c) 2021 FIRST. All rights reserved.
- *
- * Redistribution and use in source and binary forms, with or without modification,
- * are permitted (subject to the limitations in the disclaimer below) provided that
- * the following conditions are met:
- *
- * Redistributions of source code must retain the above copyright notice, this list
- * of conditions and the following disclaimer.
- *
- * Redistributions in binary form must reproduce the above copyright notice, this
- * list of conditions and the following disclaimer in the documentation and/or
- * other materials provided with the distribution.
- *
- * Neither the name of FIRST nor the names of its contributors may be used to endorse or
- * promote products derived from this software without specific prior written permission.
- *
- * NO EXPRESS OR IMPLIED LICENSES TO ANY PARTY'S PATENT RIGHTS ARE GRANTED BY THIS
- * LICENSE. THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
- * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
- * THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE
- * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
- * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
- * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
- * CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
- * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
- * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- */
-
 package org.firstinspires.ftc.teamcode.teleOp;
 
 import com.qualcomm.hardware.limelightvision.LLResult;
@@ -38,6 +9,7 @@ import com.qualcomm.robotcore.util.ElapsedTime;
 import org.firstinspires.ftc.robotcore.external.navigation.Pose3D;
 import org.firstinspires.ftc.teamcode.datatypes.Point;
 import org.firstinspires.ftc.teamcode.datatypes.Pose;
+import org.firstinspires.ftc.teamcode.tools.Color;
 import org.firstinspires.ftc.teamcode.tools.Flywheel;
 import org.firstinspires.ftc.teamcode.tools.Intake;
 import org.firstinspires.ftc.teamcode.tools.JohnLimeLight;
@@ -52,27 +24,52 @@ import java.util.List;
 @com.qualcomm.robotcore.eventloop.opmode.TeleOp(name="TELE-RED", group="Linear OpMode")
 public class TeleRed extends LinearOpMode {
 
-    // Declare OpMode members for each of the 4 motors.
     private ElapsedTime runtime = new ElapsedTime();
     private ElapsedTime flickTimer = new ElapsedTime();
     private Limelight3A limelight;
-    private boolean lastTickle = false;
+
+    // Button edge detection
     private boolean lastSquare = false;
     private boolean lastTriangle2 = false;
-    private boolean isBlocking = false;
+    private boolean lastG1Cross = false;
+    private boolean lastG2Cross = false;
+    private boolean lastG1Triangle = false;
+    private boolean lastG1Circle = false;
+    private boolean lastDpadDown = false;
+    private boolean lastG2Square = false;
+    private boolean lastDpadLeft = false;
+    private boolean lastTickle = false;
+
+    // State tracking
     private boolean isTrack = false;
     private boolean isFlicked = false;
     private boolean isSpinningUp = false;
+    private boolean isBlocking = false;
     private double targetFlywheelVelocity = 0;
-    private String previousBallColor = null;
-    private boolean lastBlock = true;
-    private boolean previousLastBlock = false;
     private double Tx;
     private double Ty;
-    private Point position = new Point(0,0);
+    private Point position = new Point(0, 0);
     private boolean autoRetractPending = false;
-    private boolean leftTriggerOffsetApplied = false;
-    private static final double RETRACT_DELAY_MS = 2000; // Time to wait before auto-retracting
+    private boolean lastBlock = true;
+    private boolean previousLastBlock = false;
+    private static final double RETRACT_DELAY_MS = 2000;
+
+    // Intake toggle
+    private boolean intakeToggled = false;
+
+    // Ball slot tracking
+    private int detectedBalls = 0;
+    private String[] ballSlots = new String[3];
+    private boolean ballDetectedLastLoop = false;
+    private boolean manualSpinUsed = false;
+
+    // Shooting mode & auto-transfer
+    private boolean shootingMode = false;
+    private boolean transferActive = false;
+    private int transferStage = 0;
+    private int flickCount = 0;
+    private ElapsedTime transferTimer = new ElapsedTime();
+    private boolean transferTimerStarted = false;
 
     @Override
     public void runOpMode() {
@@ -83,18 +80,23 @@ public class TeleRed extends LinearOpMode {
         telemetry.update();
         limelight.start();
 
+        for (int i = 0; i < 3; i++) ballSlots[i] = null;
+
         waitForStart();
-        //8 is Blue
-        //9 is Red
         limelight.pipelineSwitch(9);
         runtime.reset();
+        Turret.setRobotHeading(0);
 
-        // run until the end of the match (driver presses STOP)
         while (opModeIsActive()) {
+            // Update odometry for heading feedback
+            Actuation.otto.updateOdometry();
+
+            // Field-centric turret compensation
+            Turret.compensateRotation(Actuation.otto.getPose().getR());
+
             isFlicked = Tickle.getStatus();
             LLResult llresult = limelight.getLatestResult();
-            //if (!Intake.isBusy()) {Tickle.blockBall();}
-            // Update PID controllers
+
             Flywheel.update();
             Sorter.update();
 
@@ -104,7 +106,7 @@ public class TeleRed extends LinearOpMode {
                 position = JohnLimeLight.getPosition(botpose);
                 Tx = llresult.getTx();
                 Ty = llresult.getTy();
-                if (isTrack) {Turret.track(Tx, Ty);}
+                if (isTrack) { Turret.track(Tx, Ty); }
             }
 
             // Auto-blocking: only call blockBall() when transitioning to enabled state
@@ -120,69 +122,91 @@ public class TeleRed extends LinearOpMode {
                 lastBlock = true;
             }
 
-            //String ballColor = Color.getColor();
+            // Ball color detection & auto-sort
+            updateBallTracking();
+
+            // Auto-transfer state machine
+            if (transferActive) {
+                runTransfer();
+            }
+
             pad1();
             pad2();
 
-            /*
-            String currentBallColor = Color.getColor();
-            if (currentBallColor != null && previousBallColor == null && !Sorter.isBusy() && !Sorter.isFull()) {
-                Sorter.turn(1);
-                Sorter.updatePorts(currentBallColor);
-                gamepad1.rumble(200);
-                previousBallColor = currentBallColor;
-            }
-            // Reset previousBallColor when no ball is detected
-            if (currentBallColor == null) {
-                previousBallColor = null;
-            }
-             */
-
-            /*
-            // Automatic sorter advance after shooting - COMMENTED OUT
-            if (lastFlicked && !Tickle.getStatus() && !Sorter.isBusy()) {
-                Sorter.turn(1);
-                Sorter.updatePorts(null);
-                lastFlicked = false;
-            }
-            */
-
             telemetry.addData("Status", "Run Time: " + runtime.toString());
-            telemetry.addData("Is tracking: ", isTrack);
-            telemetry.addData("Flywheel Target: ", String.format("%.0f", targetFlywheelVelocity));
-            telemetry.addData("Flywheel Ready: ", isSpinningUp && Flywheel.isAtSpeed(50));
-            telemetry.addData("Tx: ", Tx);
-            telemetry.addData("Ty: ", Ty);
-            telemetry.addData("Position: ", position.toString());
-            telemetry.addData("Turret Position: ", Turret.getPosition());
-            telemetry.addData("Ball Color: ", Arrays.toString(Sorter.getPorts()));
-            telemetry.addData("Sorter Pos: ", Sorter.getPosition());
-            telemetry.addData("Sorter Target: ", Sorter.getTargetPosition());
+            telemetry.addData("Intake", intakeToggled ? "ON" : "OFF");
+            telemetry.addData("Shooting Mode", shootingMode ? "READY" : "COLLECT");
+            telemetry.addData("Is tracking", isTrack);
+            telemetry.addData("Flywheel Target", String.format("%.0f", targetFlywheelVelocity));
+            telemetry.addData("Flywheel Ready", isSpinningUp && Flywheel.isAtSpeed(50));
+            telemetry.addData("Tx", Tx);
+            telemetry.addData("Ty", Ty);
+            telemetry.addData("Position", position.toString());
+            telemetry.addData("Turret Position", Turret.getPosition());
+            telemetry.addData("Ball Slots", formatBallSlots());
+            telemetry.addData("Balls", detectedBalls + "/3");
+            telemetry.addData("Sorter Pos", Sorter.getPosition());
+            telemetry.addData("Sorter Target", Sorter.getTargetPosition());
             telemetry.update();
         }
     }
-    // gamepad 1: drive + intake
-    // gamepad 1: turret + shoot
+
+    // gamepad 1: drive + intake + shooting mode controls
     public void pad1() {
-        double axial   =  -gamepad1.left_stick_y;
-        double lateral =  gamepad1.left_stick_x;
-        double yaw     =  gamepad1.right_stick_x;
-        Actuation.drive(axial,lateral,yaw);
-        if (gamepad1.right_trigger > 0.5 && !isFlicked) {
-            Tickle.retract();
-            lastBlock = false;
-            gamepad1.rumble(100);
-            Intake.intakeBall(1.0);
+        double axial = -gamepad1.left_stick_y;
+        double lateral = gamepad1.left_stick_x;
+        double yaw = gamepad1.right_stick_x;
+        Actuation.drive(axial, lateral, yaw);
+
+        // Intake toggle (cross on either gamepad)
+        boolean currentG1Cross = gamepad1.cross;
+        if (currentG1Cross && !lastG1Cross) {
+            intakeToggled = !intakeToggled;
         }
-        else if (gamepad1.left_trigger > 0.5 && !isFlicked) {
-            Tickle.retract();
-            lastBlock = false;
-            gamepad1.rumble(100);
+        lastG1Cross = currentG1Cross;
+
+        boolean currentG2Cross = gamepad2.cross;
+        if (currentG2Cross && !lastG2Cross) {
+            intakeToggled = !intakeToggled;
+        }
+        lastG2Cross = currentG2Cross;
+
+        // Outtake (dpad_right)
+        if (gamepad1.dpad_right) {
             Intake.intakeBall(-1.0);
-        }
-        else {
+        } else if (intakeToggled && !shootingMode) {
+            Intake.intakeBall(1.0);
+        } else {
             Intake.stop();
         }
+
+        // Enter shooting mode (triangle) - only if not already shooting or transferring
+        boolean currentTriangle = gamepad1.triangle;
+        if (currentTriangle && !lastG1Triangle && !shootingMode && !transferActive) {
+            shootingMode = true;
+            Sorter.enterShootingMode();
+        }
+        lastG1Triangle = currentTriangle;
+
+        // Start auto-transfer (circle) - only in shooting mode
+        boolean currentCircle = gamepad1.circle;
+        if (currentCircle && !lastG1Circle && shootingMode && !transferActive) {
+            transferActive = true;
+            transferStage = 0;
+            flickCount = 0;
+            transferTimerStarted = false;
+        }
+        lastG1Circle = currentCircle;
+
+        // Manual sorter controls
+        boolean currentSquare = gamepad1.square;
+        if (currentSquare && !lastDpadLeft && !shootingMode) {
+            Sorter.turn(1);
+            manualSpinUsed = true;
+        }
+        lastDpadLeft = currentSquare;
+
+        // Sorter bumper controls
         if (gamepad1.right_bumper && !Sorter.isBusy()) {
             Sorter.turn(1);
         }
@@ -190,18 +214,20 @@ public class TeleRed extends LinearOpMode {
             Sorter.turn(-1);
         }
     }
+
+    // gamepad 2: turret + shoot + sorter manual
     public void pad2() {
         // Turret control - toggle tracking mode
         if (gamepad2.square && !lastSquare) {
-            isTrack = !isTrack;  // Toggle tracking mode
+            isTrack = !isTrack;
             if (!isTrack) {
-                Turret.resetPID();  // Reset PID state when disabling tracking
+                Turret.resetPID();
                 Turret.stop();
             }
             lastSquare = true;
         }
         if (!gamepad2.square) {
-            lastSquare = false;  // Reset when button is released
+            lastSquare = false;
         }
 
         // Toggle blockBall/retract with gamepad2.triangle
@@ -218,58 +244,66 @@ public class TeleRed extends LinearOpMode {
             lastTriangle2 = true;
         }
         if (!gamepad2.triangle) {
-            lastTriangle2 = false;  // Reset when button is released
+            lastTriangle2 = false;
         }
 
-        //sorter
-        /*
-        if (gamepad2.right_bumper && !Sorter.isBusy() && !isFlicked) {
-            Sorter.turn(1);
-        }
-        if (gamepad2.left_bumper && !Sorter.isBusy() && !isFlicked) {
+        // Manual sorter via gamepad2 dpad_down (reverse) and square (forward)
+        boolean g2DpadDown = gamepad2.dpad_down;
+        if (g2DpadDown && !lastDpadDown && !Sorter.isBusy()) {
             Sorter.turn(-1);
+            manualSpinUsed = true;
+            if (detectedBalls > 0) {
+                // Shift ball slots down
+                for (int i = 0; i < 2; i++) {
+                    ballSlots[i] = ballSlots[i + 1];
+                }
+                ballSlots[2] = null;
+                detectedBalls--;
+                if (shootingMode && detectedBalls < 3) {
+                    shootingMode = false;
+                    Sorter.exitShootingMode();
+                }
+                ballDetectedLastLoop = false;
+            }
         }
+        lastDpadDown = g2DpadDown;
 
-
-
-        //stop sorter
-        if (gamepad2.circle) {
-            Sorter.stop();
+        boolean g2Square = gamepad2.square;
+        if (g2Square && !lastG2Square && !shootingMode && !Sorter.isBusy()) {
+            Sorter.turn(1);
+            manualSpinUsed = true;
         }
-        //run to start position
-        if (gamepad2.cross) {
-            Sorter.setStart();
-        }
-         */
+        lastG2Square = g2Square;
+
         // Manual turret control only when not in tracking mode
         if (gamepad2.dpad_right && !isTrack) {
-            Turret.turn(5);   // Fine adjustment right
+            Turret.turn(5);
         }
         if (gamepad2.dpad_left && !isTrack) {
-            Turret.turn(-5);   // Fine adjustment right
+            Turret.turn(-5);
         }
         if (!isTrack && !gamepad2.square) {
-            Turret.turn((int)(-gamepad2.left_stick_x * 10));
+            Turret.turn((int) (-gamepad2.left_stick_x * 10));
         }
-        //flicker control
+
+        // Flicker control
         if (gamepad2.dpad_down && !lastTickle) {
             if (Tickle.getStatus()) {
                 Tickle.retract();
                 lastTickle = true;
-                autoRetractPending = false; // Cancel auto-retract if manually controlled
-            }
-            else if (gamepad2.dpad_up){
+                autoRetractPending = false;
+            } else if (gamepad2.dpad_up) {
                 Tickle.flick();
                 lastTickle = true;
-                autoRetractPending = false; // Manual control overrides auto-retract
+                autoRetractPending = false;
             }
         }
         if (!gamepad2.dpad_up && !gamepad2.dpad_down) {
-            lastTickle = false; // Reset when button is released
+            lastTickle = false;
         }
+
         // Manual flywheel control with left trigger (with auto-flick)
         if (gamepad2.left_trigger > 0.2) {
-            // Direct power control for manual flywheel operation
             double manualPower = 1550;
             Flywheel.setTargetVelocity(manualPower);
             isSpinningUp = true;
@@ -283,11 +317,10 @@ public class TeleRed extends LinearOpMode {
         }
         // Flywheel shooting with PID velocity control and auto-flick
         else if (gamepad2.right_trigger > 0.2) {
-            targetFlywheelVelocity = Flywheel.calculateTargetVelocity(Ty);  // ticks/sec
+            targetFlywheelVelocity = Flywheel.calculateTargetVelocity(Ty);
             Flywheel.setTargetVelocity(targetFlywheelVelocity);
             isSpinningUp = true;
 
-            // Auto-flick when flywheel reaches target speed (tolerance: 20 ticks/sec)
             if (Flywheel.isAtSpeed(20) && !autoRetractPending) {
                 gamepad2.rumble(2000);
                 Tickle.flick();
@@ -301,5 +334,111 @@ public class TeleRed extends LinearOpMode {
             Flywheel.setTargetVelocity(0);
             isSpinningUp = false;
         }
+    }
+
+    private void updateBallTracking() {
+        String currentColor = Color.getColor();
+        boolean currentColorDetected = currentColor != null;
+        boolean sorterAtPosition = !Sorter.isBusy();
+
+        if (sorterAtPosition && manualSpinUsed) {
+            manualSpinUsed = false;
+            ballDetectedLastLoop = false;
+        }
+
+        if (intakeToggled && !shootingMode && !transferActive && !manualSpinUsed && sorterAtPosition) {
+            if (currentColorDetected && !ballDetectedLastLoop && detectedBalls < 3) {
+                addBall(currentColor);
+                detectedBalls++;
+                Sorter.turn(1);
+
+                if (detectedBalls == 3) {
+                    shootingMode = true;
+                    Sorter.enterShootingMode();
+                }
+            }
+        }
+
+        ballDetectedLastLoop = currentColorDetected;
+    }
+
+    private void runTransfer() {
+        switch (transferStage) {
+            case 0: // Flick up
+                Tickle.flick();
+                if (Tickle.isAtMax()) {
+                    if (!transferTimerStarted) {
+                        transferTimer.reset();
+                        transferTimerStarted = true;
+                    }
+                    if (transferTimer.milliseconds() >= Tickle.flickUpWaitMs) {
+                        transferStage = 1;
+                        transferTimerStarted = false;
+                    }
+                }
+                break;
+
+            case 1: // Retract
+                Tickle.retract();
+                if (Tickle.isAtMin()) {
+                    if (!transferTimerStarted) {
+                        transferTimer.reset();
+                        transferTimerStarted = true;
+                    }
+                    if (transferTimer.milliseconds() >= Tickle.flickDownWaitMs) {
+                        flickCount++;
+                        transferTimerStarted = false;
+
+                        if (flickCount >= 3) {
+                            // Transfer complete
+                            transferActive = false;
+                            shootingMode = false;
+                            Sorter.exitShootingMode();
+                            clearBalls();
+                            intakeToggled = false;
+                        } else {
+                            // Advance sorter then flick again
+                            transferStage = 2;
+                        }
+                    }
+                }
+                break;
+
+            case 2: // Advance sorter
+                Sorter.turn(1);
+                transferStage = 3;
+                break;
+
+            case 3: // Wait for sorter to reach position
+                if (!Sorter.isBusy()) {
+                    transferStage = 0;
+                }
+                break;
+        }
+    }
+
+    private void addBall(String color) {
+        for (int i = 0; i < 2; i++) {
+            ballSlots[i] = ballSlots[i + 1];
+        }
+        ballSlots[2] = color;
+    }
+
+    private void clearBalls() {
+        for (int i = 0; i < ballSlots.length; i++) {
+            ballSlots[i] = null;
+        }
+        detectedBalls = 0;
+        ballDetectedLastLoop = false;
+    }
+
+    private String formatBallSlots() {
+        StringBuilder sb = new StringBuilder("[");
+        for (int i = 0; i < ballSlots.length; i++) {
+            sb.append(ballSlots[i] == null ? "empty" : ballSlots[i]);
+            if (i < ballSlots.length - 1) sb.append(", ");
+        }
+        sb.append("]");
+        return sb.toString();
     }
 }
