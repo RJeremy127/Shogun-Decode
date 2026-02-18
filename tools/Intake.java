@@ -12,7 +12,7 @@ public class Intake {
 
     public static void init(HardwareMap map) {
         intake = map.get(DcMotor.class, "intake");
-        intake.setDirection(DcMotorSimple.Direction.REVERSE);
+        intake.setDirection(DcMotorSimple.Direction.FORWARD);
     }
 
     public static void intakeBall(double power) {

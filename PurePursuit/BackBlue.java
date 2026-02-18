@@ -1,60 +1,46 @@
 package org.firstinspires.ftc.teamcode.PurePursuit;
 
-import com.qualcomm.hardware.limelightvision.LLResult;
-import com.qualcomm.hardware.limelightvision.LLResultTypes;
-import com.qualcomm.hardware.limelightvision.Limelight3A;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
-import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 
 import org.firstinspires.ftc.teamcode.datatypes.Pose;
-import org.firstinspires.ftc.teamcode.tools.Flywheel;
-import org.firstinspires.ftc.teamcode.tools.Sorter;
-import org.firstinspires.ftc.teamcode.tools.Tickle;
-import org.firstinspires.ftc.teamcode.tools.Turret;
-import org.firstinspires.ftc.teamcode.util.Actuation;
 
-import java.util.List;
+@Autonomous(name = "FUCK-BackBlue", group = "Auto")
+public class BackBlue extends AutoBase {
 
-@Autonomous(name="BackBlue")
-public class BackBlue extends LinearOpMode {
-    private Limelight3A lim;
-    double Tx, Ty;
+    @Override
     public void runOpMode() {
-        Actuation.setup(hardwareMap, new Pose(0,0,0), telemetry);
-        lim = hardwareMap.get(Limelight3A.class, "limelight");
-        telemetry.addData("Status", "Initialized");
-        telemetry.update();
-        lim.start();
+        // Pipeline 8 = blue goals
+        initAuto(new Pose(0, 0, 0), 8);
+
         waitForStart();
-        //8 is blue
-        //9 is red
-        lim.pipelineSwitch(8);
 
+        telemetry.addData("Phase", "Shooting preloaded balls");
+        telemetry.update();
+        shootAllThree();
 
-            LLResult llresult = lim.getLatestResult();
-            while (!(llresult != null && llresult.isValid())) {
-                Turret.turn(-1);
-                llresult = lim.getLatestResult();
-            }
+        telemetry.addData("Phase", "Driving to loading zone");
+        telemetry.update();
+        driveToWithUpdates(new Pose(0, -10, 0), 0.5, 0.2); // TODO: TUNE position
 
-            do {
-                List<LLResultTypes.FiducialResult> results = llresult.getFiducialResults();
-                Tx = llresult.getTx();
-                Ty = llresult.getTy();
-                llresult = lim.getLatestResult();
-            } while(Turret.autoTrack(Tx, Ty));
+        telemetry.addData("Phase", "Waiting for human player feed (1)");
+        telemetry.update();
+        waitForHumanFeed(3);
 
+        telemetry.addData("Phase", "Returning to shoot position");
+        telemetry.update();
+        driveToWithUpdates(new Pose(0, 0, 0), 0.5, 0.2); // TODO: TUNE position
 
-        launch();
-        Pose [] p = new Pose[]{new Pose(0, -20, Math.toRadians(0))};
-        Route r = new Route(p);
-        r.run(.5, .2);
-    }
-    public void launch() {
-        Flywheel.setTargetVelocity(Flywheel.calculateTargetVelocity(Ty));
-        sleep(5000);
-        Tickle.flick();
-        sleep(2000);
-        Tickle.blockBall();
+        telemetry.addData("Phase", "Shooting cycle 2");
+        telemetry.update();
+        shootAllThree();
+
+        // Drive to shooting position
+        telemetry.addData("Phase", "Returning to shoot position");
+        telemetry.update();
+        driveToWithUpdates(new Pose(0, 0, 0), 0.5, 0.2); // TODO: TUNE position
+
+        telemetry.addData("Phase", "Shooting cycle 3");
+        telemetry.update();
+        shootAllThree();
     }
 }
