@@ -93,6 +93,7 @@ public class TeleBlue extends LinearOpMode {
 
     // Turret manual control
     private boolean turretManualActive = false;
+    private boolean wasWrapping = false;
 
     // Timing for wraparound and flywheel dt
     private double lastTime = 0;
@@ -134,6 +135,11 @@ public class TeleBlue extends LinearOpMode {
 
             // Turret wraparound (takes priority over tracking/manual)
             boolean wrapping = Turret.updateWraparound(dt);
+            if (wrapping && !wasWrapping) {
+                gamepad1.rumble(0.3, 0.3, 150);
+                gamepad2.rumble(0.3, 0.3, 150);
+            }
+            wasWrapping = wrapping;
 
             if (llresult != null && llresult.isValid()) {
                 List<LLResultTypes.FiducialResult> results = llresult.getFiducialResults();
@@ -193,9 +199,9 @@ public class TeleBlue extends LinearOpMode {
             telemetry.addData("Field-Centric", Turret.isFieldCentricEnabled() ? "ON" : "OFF");
             telemetry.addData("Flywheel Eq", flywheelEquationEnabled ? "ON" : "OFF");
             if (Turret.isWraparoundActive()) {
-                telemetry.addData("Turret", "WRAPPING");
+                telemetry.addData("Turret", "WRAPPING @ " + Turret.getPosition());
             } else {
-                telemetry.addData("Turret", Turret.getPosition() + " ticks");
+                telemetry.addData("Turret", Turret.getPosition() + " / target " + Turret.getTargetPosition());
             }
             telemetry.addData("Balls", detectedBalls + "/3");
             telemetry.addData("Flywheel", (int) Flywheel.getVelocity() + " / " + (int) targetFlywheelVelocity);
@@ -299,6 +305,12 @@ public class TeleBlue extends LinearOpMode {
         }
         lastG2DpadLeft = g1left;
 
+        // --- Both bumpers: Emergency wraparound cancel ---
+        if (gamepad1.left_bumper && gamepad1.right_bumper) {
+            Turret.cancelWraparound();
+            gamepad1.rumble(1.0, 1.0, 300);
+        }
+
         // --- Bumpers: Manual turret control (only when not tracking and not wrapping) ---
         if (!wrapping && !isTrack) {
             if (gamepad1.right_bumper) {
@@ -365,7 +377,7 @@ public class TeleBlue extends LinearOpMode {
             isTrack = !isTrack;
             if (!isTrack) {
                 Turret.resetPID();
-                Turret.stop();
+                Turret.syncAfterManual(); // restore RUN_TO_POSITION so field-centric keeps working
             }
             lastTriangle2 = true;
         }
@@ -394,11 +406,15 @@ public class TeleBlue extends LinearOpMode {
             Intake.intakeBall(-1.0);
         }
 
-        // --- Dpad Down: Toggle pattern shoot ---
+        // --- Dpad Down: Toggle pattern shoot (requires a motif to be selected first) ---
         boolean g2DpadDown = gamepad2.dpad_down;
         if (g2DpadDown && !lastDpadDown) {
-            patternShootEnabled = !patternShootEnabled;
-            gamepad2.rumble(0.3, 0.3, 150);
+            if (!patternSelected) {
+                gamepad2.rumble(1.0, 0.0, 300); // reject: no motif selected
+            } else {
+                patternShootEnabled = !patternShootEnabled;
+                gamepad2.rumbleBlips(patternShootEnabled ? 1 : 2);
+            }
         }
         lastDpadDown = g2DpadDown;
 
@@ -428,6 +444,12 @@ public class TeleBlue extends LinearOpMode {
             gamepad2.rumble(0.3, 0.3, 150);
         }
         lastG2DpadRight = g2DpadRight;
+
+        // --- Both bumpers: Emergency wraparound cancel ---
+        if (gamepad2.left_bumper && gamepad2.right_bumper) {
+            Turret.cancelWraparound();
+            gamepad2.rumble(1.0, 1.0, 300);
+        }
 
         // --- Bumpers: Manual turret control (only when not tracking and not wrapping) ---
         if (!wrapping && !isTrack) {
@@ -595,6 +617,14 @@ public class TeleBlue extends LinearOpMode {
 
             case 3: // Wait for sorter to reach position
                 if (!Sorter.isBusy()) {
+                    transferStage = 4;
+                    transferTimer.reset();
+                    transferTimerStarted = true;
+                }
+                break;
+
+            case 4: // Post-spin wait before next flick
+                if (transferTimer.milliseconds() >= Tickle.postSpinWaitMs) {
                     transferStage = 0;
                     transferTimerStarted = false;
                 }

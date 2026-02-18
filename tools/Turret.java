@@ -127,6 +127,10 @@ public class Turret {
         return motor.getCurrentPosition();
     }
 
+    public static int getTargetPosition() {
+        return target;
+    }
+
     public static void stop() {
         motor.setPower(0.0);
     }
@@ -200,12 +204,14 @@ public class Turret {
     }
 
     /**
-     * Call when releasing manual control to sync target to current position.
+     * Call when releasing manual control (or disabling tracking) to sync
+     * target to current position and restore position-hold mode.
      */
     public static void syncAfterManual() {
         target = motor.getCurrentPosition();
         motor.setTargetPosition(target);
-        motor.setPower(0);
+        motor.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+        motor.setPower(motorPower);
     }
 
     public static void resetPID() {
