@@ -8,11 +8,9 @@ public class Tickle {
     private static boolean flicked;
 
     // Servo positions
-    private static final double minPosition = 0.63;
-    private static final double maxPosition = 0.9;
+    private static final double minPosition = 0.69;
+    private static final double maxPosition = 0.87;
     private static final double transferPosition = 0.63;
-    private static final double blockBallPosition = 0.66;
-
     // Auto-transfer timing (ms)
     public static final double flickUpWaitMs = 150;
     public static final double flickDownWaitMs = 150;
@@ -45,11 +43,6 @@ public class Tickle {
         currentPosition = transferPosition;
         tickle.setPosition(transferPosition);
         flicked = false;
-    }
-
-    public static void blockBall() {
-        currentPosition = blockBallPosition;
-        tickle.setPosition(blockBallPosition);
     }
 
     // Incremental position control (for trigger-based control)

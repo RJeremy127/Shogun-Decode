@@ -4,13 +4,13 @@ import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 
 import org.firstinspires.ftc.teamcode.datatypes.Pose;
 
-@Autonomous(name = "FrontRed", group = "Auto")
+//@Autonomous(name = "FrontRed", group = "Auto")
 public class FrontRed extends AutoBase {
 
     @Override
     public void runOpMode() {
-        // Pipeline 9 = red goals
-        initAuto(new Pose(0, 0, 0), 9);
+        // Pipeline 9 = red goals, goal position TODO: TUNE
+        initAuto(new Pose(0, 0, 0), 9, 0, 72);
 
         waitForStart();
 

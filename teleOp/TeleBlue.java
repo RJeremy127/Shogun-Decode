@@ -55,8 +55,6 @@ public class TeleBlue extends LinearOpMode {
     private double Ty;
     private Point position = new Point(0, 0);
     private boolean autoRetractPending = false;
-    private boolean lastBlock = true;
-    private boolean previousLastBlock = false;
     private static final double RETRACT_DELAY_MS = 2000;
 
     // Intake toggle & outtake pulse
@@ -124,8 +122,10 @@ public class TeleBlue extends LinearOpMode {
             // Update odometry for heading feedback
             Actuation.otto.updateOdometry();
 
-            // Field-centric turret compensation
-            Turret.compensateRotation(Actuation.otto.getPose().getR());
+            // Field-centric turret compensation (disabled during Limelight tracking)
+            if (!isTrack) {
+                Turret.compensateRotation(Actuation.otto.getPose().getR());
+            }
 
             isFlicked = Tickle.getStatus();
             LLResult llresult = limelight.getLatestResult();
@@ -145,22 +145,15 @@ public class TeleBlue extends LinearOpMode {
                 List<LLResultTypes.FiducialResult> results = llresult.getFiducialResults();
                 Pose3D botpose = llresult.getBotpose();
                 position = JohnLimeLight.getPosition(botpose);
-                Tx = llresult.getTx();
-                Ty = llresult.getTy();
+                Tx = llresult.getTy();
+                Ty = llresult.getTx();
                 if (isTrack && !wrapping) { Turret.track(Tx, Ty); }
             }
-
-            // Auto-blocking: only call blockBall() when transitioning to enabled state
-            if (lastBlock && !previousLastBlock) {
-                Tickle.blockBall();
-            }
-            previousLastBlock = lastBlock;
 
             // Auto-retract flickers after shooting
             if (autoRetractPending && flickTimer.milliseconds() >= RETRACT_DELAY_MS) {
                 Tickle.retract();
                 autoRetractPending = false;
-                lastBlock = true;
             }
 
             // Intake outtake pulse timer
@@ -378,6 +371,7 @@ public class TeleBlue extends LinearOpMode {
             if (!isTrack) {
                 Turret.resetPID();
                 Turret.syncAfterManual(); // restore RUN_TO_POSITION so field-centric keeps working
+                Turret.setRobotHeading(Actuation.otto.getPose().getR()); // resync heading to avoid jump
             }
             lastTriangle2 = true;
         }
@@ -506,7 +500,7 @@ public class TeleBlue extends LinearOpMode {
         if (flywheelEquationEnabled) {
             LLResult result = limelight.getLatestResult();
             if (result != null && result.isValid()) {
-                lastSeenTx = result.getTx();
+                lastSeenTx = result.getTy();
             }
             targetFlywheelVelocity = Flywheel.calculateTargetVelocityFromTx(lastSeenTx);
             Flywheel.setTargetVelocity(targetFlywheelVelocity);

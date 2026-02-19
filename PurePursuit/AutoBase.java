@@ -13,6 +13,7 @@ import org.firstinspires.ftc.teamcode.tools.Sorter;
 import org.firstinspires.ftc.teamcode.tools.Tickle;
 import org.firstinspires.ftc.teamcode.tools.Turret;
 import org.firstinspires.ftc.teamcode.util.Actuation;
+import org.firstinspires.ftc.teamcode.util.MathFunctions;
 
 public abstract class AutoBase extends LinearOpMode {
 
@@ -20,51 +21,88 @@ public abstract class AutoBase extends LinearOpMode {
     protected double Tx = 0;
     protected double Ty = 0;
 
-    //init auto
-    protected void initAuto(Pose startPose, int pipeline) {
+    // Goal position for pre-aiming (field coordinates, inches)
+    protected double goalX = 0;
+    protected double goalY = 0;
+
+    // Sweep search constants
+    private static final int SWEEP_STEP = 5;
+    private static final int SWEEP_RANGE = 50;
+
+    protected void initAuto(Pose startPose, int pipeline, double goalX, double goalY) {
         Actuation.setup(hardwareMap, startPose, telemetry);
         limelight = hardwareMap.get(Limelight3A.class, "limelight");
         limelight.start();
         limelight.pipelineSwitch(pipeline);
+        this.goalX = goalX;
+        this.goalY = goalY;
         telemetry.addData("Status", "Initialized");
         telemetry.update();
     }
 
     /**
+     * Pre-aim the turret toward the goal using odometry.
+     * Calculates the field-relative angle to the goal and moves the turret
+     * so the AprilTag is near the center of the Limelight's FOV.
+     */
+    protected void preAimAtGoal() {
+        Pose robot = Actuation.otto.getPose();
+        double dx = goalX - robot.getX();
+        double dy = goalY - robot.getY();
+        double fieldAngle = Math.atan2(dx, dy);
+        double turretAngle = MathFunctions.angleWrap(fieldAngle - robot.getR());
+        int targetTicks = (int) (turretAngle * Turret.ticksPerRadian);
+        int deltaTicks = targetTicks - Turret.getPosition();
+        Turret.turn(deltaTicks);
+    }
+
+    /**
      * Aim turret at Limelight target until turret is in deadzone.
-     * Keeps flywheel and sorter PID alive during tracking.
+     * Pre-aims using odometry first, then fine-tracks with Limelight.
+     * If no target is found, sweeps turret back and forth to search.
      */
     protected void aimTurret() {
+        preAimAtGoal();
+
+        int sweepCenter = Turret.getPosition();
+        int sweepDirection = 1;
+        int sweepOffset = 0;
+
         ElapsedTime timeout = new ElapsedTime();
         while (opModeIsActive() && timeout.seconds() < 3.0) {
             Flywheel.update();
             Sorter.update();
             LLResult result = limelight.getLatestResult();
             if (result != null && result.isValid()) {
-                Tx = result.getTx();
-                Ty = result.getTy();
+                Tx = result.getTy();
+                Ty = result.getTx();
                 if (!Turret.autoTrack(Tx, Ty)) {
                     break; // In deadzone, turret is aimed
                 }
             } else {
-                // No valid result, nudge turret to search
-                Turret.turn(-1);
+                // Sweep search: oscillate turret to find the tag
+                sweepOffset += SWEEP_STEP * sweepDirection;
+                if (Math.abs(sweepOffset) >= SWEEP_RANGE) {
+                    sweepDirection = -sweepDirection;
+                }
+                Turret.turn(SWEEP_STEP * sweepDirection);
             }
         }
     }
 
     /**
      * Aim turret and shoot one ball.
-     * 1. Aim turret via Limelight
-     * 2. Spin flywheel to calculated target velocity
-     * 3. Wait until at speed
-     * 4. Flick, wait, retract, blockBall
+     * 1. Pre-aim turret using odometry
+     * 2. Fine-track with Limelight (sweep if needed)
+     * 3. Spin flywheel to target velocity
+     * 4. Wait until at speed
+     * 5. Flick, wait, retract
      */
     protected void aimAndShoot() {
         aimTurret();
 
-        // Set flywheel velocity based on Ty
-        double targetVelocity = Flywheel.calculateTargetVelocity(Ty);
+        // Set flywheel velocity
+        double targetVelocity = 1450;
         Flywheel.setTargetVelocity(targetVelocity);
 
         // Wait for flywheel to reach speed
@@ -75,8 +113,8 @@ public abstract class AutoBase extends LinearOpMode {
             // Keep tracking while spinning up
             LLResult result = limelight.getLatestResult();
             if (result != null && result.isValid()) {
-                Tx = result.getTx();
-                Ty = result.getTy();
+                Tx = result.getTy();
+                Ty = result.getTx();
                 Turret.autoTrack(Tx, Ty);
             }
         }
@@ -85,8 +123,6 @@ public abstract class AutoBase extends LinearOpMode {
         Tickle.flick();
         sleep(300);
         Tickle.retract();
-        sleep(200);
-        Tickle.blockBall();
     }
 
     /**

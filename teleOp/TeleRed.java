@@ -124,8 +124,10 @@ public class TeleRed extends LinearOpMode {
             // Update odometry for heading feedback
             Actuation.otto.updateOdometry();
 
-            // Field-centric turret compensation
-            Turret.compensateRotation(Actuation.otto.getPose().getR());
+            // Field-centric turret compensation (disabled during Limelight tracking)
+            if (!isTrack) {
+                Turret.compensateRotation(Actuation.otto.getPose().getR());
+            }
 
             isFlicked = Tickle.getStatus();
             LLResult llresult = limelight.getLatestResult();
@@ -145,8 +147,8 @@ public class TeleRed extends LinearOpMode {
                 List<LLResultTypes.FiducialResult> results = llresult.getFiducialResults();
                 Pose3D botpose = llresult.getBotpose();
                 position = JohnLimeLight.getPosition(botpose);
-                Tx = llresult.getTx();
-                Ty = llresult.getTy();
+                Tx = llresult.getTy();
+                Ty = llresult.getTx();
                 if (isTrack && !wrapping) { Turret.track(Tx, Ty); }
             }
 
@@ -371,6 +373,7 @@ public class TeleRed extends LinearOpMode {
             if (!isTrack) {
                 Turret.resetPID();
                 Turret.syncAfterManual(); // restore RUN_TO_POSITION so field-centric keeps working
+                Turret.setRobotHeading(Actuation.otto.getPose().getR()); // resync heading to avoid jump
             }
             lastTriangle2 = true;
         }
@@ -499,7 +502,7 @@ public class TeleRed extends LinearOpMode {
         if (flywheelEquationEnabled) {
             LLResult result = limelight.getLatestResult();
             if (result != null && result.isValid()) {
-                lastSeenTx = result.getTx();
+                lastSeenTx = result.getTy();
             }
             targetFlywheelVelocity = Flywheel.calculateTargetVelocityFromTx(lastSeenTx);
             Flywheel.setTargetVelocity(targetFlywheelVelocity);

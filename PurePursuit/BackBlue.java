@@ -4,28 +4,34 @@ import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 
 import org.firstinspires.ftc.teamcode.datatypes.Pose;
 
-@Autonomous(name = "FUCK-BackBlue", group = "Auto")
+@Autonomous(name = "SHIT-Blue", group = "Auto")
 public class BackBlue extends AutoBase {
 
     @Override
     public void runOpMode() {
-        // Pipeline 8 = blue goals
-        initAuto(new Pose(0, 0, 0), 8);
+        // Pipeline 8 = blue goals, goal position TODO: TUNE
+        initAuto(new Pose(0, 0, 0), 8, 0, 72);
 
         waitForStart();
 
+        // Strafe right a little bit to get into shooting range
+        driveToWithUpdates(new Pose(0.5, 0, 0), 0.3, 0.2);
+
+        // === Cycle 1: Shoot 3 preloaded balls ===
         telemetry.addData("Phase", "Shooting preloaded balls");
         telemetry.update();
         shootAllThree();
 
-        telemetry.addData("Phase", "Driving to loading zone");
+        // === Cycle 2: Drive to first ball row, intake 3, shoot 3 ===
+        telemetry.addData("Phase", "Driving to ball row 1");
         telemetry.update();
-        driveToWithUpdates(new Pose(0, -10, 0), 0.5, 0.2); // TODO: TUNE position
+        driveToWithUpdates(new Pose(-20, -15, 0), 0.5, 0.2); // TODO: TUNE position
 
-        telemetry.addData("Phase", "Waiting for human player feed (1)");
+        telemetry.addData("Phase", "Intaking balls (row 1)");
         telemetry.update();
-        waitForHumanFeed(3);
+        intakeThreeBalls();
 
+        // Drive back to shooting position
         telemetry.addData("Phase", "Returning to shoot position");
         telemetry.update();
         driveToWithUpdates(new Pose(0, 0, 0), 0.5, 0.2); // TODO: TUNE position
@@ -34,7 +40,16 @@ public class BackBlue extends AutoBase {
         telemetry.update();
         shootAllThree();
 
-        // Drive to shooting position
+        // === Cycle 3: Drive to second ball row, intake 3, shoot 3 ===
+        telemetry.addData("Phase", "Driving to ball row 2");
+        telemetry.update();
+        driveToWithUpdates(new Pose(-20, -30, 0), 0.5, 0.2); // TODO: TUNE position
+
+        telemetry.addData("Phase", "Intaking balls (row 2)");
+        telemetry.update();
+        intakeThreeBalls();
+
+        // Drive back to shooting position
         telemetry.addData("Phase", "Returning to shoot position");
         telemetry.update();
         driveToWithUpdates(new Pose(0, 0, 0), 0.5, 0.2); // TODO: TUNE position
@@ -42,5 +57,8 @@ public class BackBlue extends AutoBase {
         telemetry.addData("Phase", "Shooting cycle 3");
         telemetry.update();
         shootAllThree();
+
+        telemetry.addData("Phase", "DONE - 9 balls scored");
+        telemetry.update();
     }
 }

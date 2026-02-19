@@ -15,6 +15,7 @@ public class Turret {
     private static double kI = 0.0001;
     private static double kD = 0.0008;
 
+    //here the values are inverted, test on the actual robot 
     private static int maxTicks = -199;
     private static int minTicks = 230;
     private static double motorPower = 0.6;
@@ -90,6 +91,9 @@ public class Turret {
 
         int deltaTicks = (int) (-deltaHeading * ticksPerRadian);
         target += deltaTicks;
+
+        // Clamp target to wiring limits
+        target = Math.max(maxTicks, Math.min(minTicks, target));
 
         // When not in tracking mode (RUN_WITHOUT_ENCODER), actively drive to compensated target
         // track() uses RUN_WITHOUT_ENCODER, so this check distinguishes position-hold vs tracking
