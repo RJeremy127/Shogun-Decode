@@ -1,41 +1,61 @@
 package org.firstinspires.ftc.teamcode.PurePursuit;
 
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
-import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 
 import org.firstinspires.ftc.teamcode.datatypes.Pose;
-import org.firstinspires.ftc.teamcode.tools.Flywheel;
-import org.firstinspires.ftc.teamcode.tools.Sorter;
-import org.firstinspires.ftc.teamcode.tools.Tickle;
-import org.firstinspires.ftc.teamcode.tools.Turret;
-import org.firstinspires.ftc.teamcode.util.Actuation;
 
-//@Autonomous(name="FrontBlue")
-public class FrontBlue extends LinearOpMode {
+//@Autonomous(name = "FrontBlue", group = "Auto")
+public class FrontBlue extends AutoBase {
+
+    @Override
     public void runOpMode() {
-        Actuation.setup(hardwareMap, new Pose(0,0,0), telemetry);
-        telemetry.addData("Status", "Initialized");
-        telemetry.update();
+        // Pipeline 8 = blue goals, goal position TODO: TUNE
+        initAuto(new Pose(0, 0, 0), 8, 0, 72);
+
         waitForStart();
 
-        // turret/movement align
-        Pose [] p = new Pose[]{new Pose(-40, 0, Math.toRadians(0))};
-        Route r = new Route(p);
-        r.run(.5, .2);
-        //Turret.track();
-        launch();
-        Sorter.turn(1);
-        launch();
-        Sorter.turn(1);
-        launch();
-        Pose [] a = new Pose[]{new Pose(0, -10, Math.toRadians(0))};
-        Route c = new Route(a);
-        c.run(.5, .2);
-    }
-    public void launch() {
-        Flywheel.setTargetVelocity(1550);
-        sleep(1000);
-        Tickle.flick();
-        Tickle.blockBall();
+        // === Cycle 1: Shoot 3 preloaded balls ===
+        telemetry.addData("Phase", "Shooting preloaded balls");
+        telemetry.update();
+        shootAllThree();
+
+        // === Cycle 2: Drive to first ball row, intake 3, shoot 3 ===
+        telemetry.addData("Phase", "Driving to ball row 1");
+        telemetry.update();
+        driveToWithUpdates(new Pose(-20, -15, 0), 0.5, 0.2); // TODO: TUNE position
+
+        telemetry.addData("Phase", "Intaking balls (row 1)");
+        telemetry.update();
+        intakeThreeBalls();
+
+        // Drive back to shooting position
+        telemetry.addData("Phase", "Returning to shoot position");
+        telemetry.update();
+        driveToWithUpdates(new Pose(0, 0, 0), 0.5, 0.2); // TODO: TUNE position
+
+        telemetry.addData("Phase", "Shooting cycle 2");
+        telemetry.update();
+        shootAllThree();
+
+        // === Cycle 3: Drive to second ball row, intake 3, shoot 3 ===
+        telemetry.addData("Phase", "Driving to ball row 2");
+        telemetry.update();
+        driveToWithUpdates(new Pose(-20, -30, 0), 0.5, 0.2); // TODO: TUNE position
+
+        telemetry.addData("Phase", "Intaking balls (row 2)");
+        telemetry.update();
+        intakeThreeBalls();
+
+        // Drive back to shooting position
+        telemetry.addData("Phase", "Returning to shoot position");
+        telemetry.update();
+        driveToWithUpdates(new Pose(0, 0, 0), 0.5, 0.2); // TODO: TUNE position
+
+        telemetry.addData("Phase", "Shooting cycle 3");
+        telemetry.update();
+        shootAllThree();
+
+        telemetry.addData("Phase", "DONE - 9 balls scored");
+        telemetry.update();
     }
 }

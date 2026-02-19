@@ -9,8 +9,8 @@ import com.qualcomm.robotcore.util.ElapsedTime;
 public class Sorter {
     private static DcMotor sorter;
     static int targetPosition = 0;
-    static double stepTicks = 128.6666666;
-    public static double shootingModeOffset = 64.3333333;
+    static double stepTicks = 183.3333333;
+    public static double shootingModeOffset = 91.66666666667;
     private static boolean inShootingMode = false;
     static int currentPort = 0;
     private static int startPos = 1;
@@ -51,6 +51,8 @@ public class Sorter {
     }
 
     public static void update() {
+        if (manualMode) return; // Skip PID when under direct power control
+
         double currentTime = timer.seconds();
         double dt = currentTime - lastTime;
         lastTime = currentTime;
@@ -139,8 +141,28 @@ public class Sorter {
         currentPort = 0;
     }
 
+    // Direct power control bypassing PID. Call syncTarget() when releasing.
+    private static boolean manualMode = false;
+
+    public static void setManualPower(double power) {
+        manualMode = true;
+        sorter.setPower(power);
+    }
+
+    public static void syncTarget() {
+        // Sync PID target to current position so it doesn't snap back
+        targetPosition = sorter.getCurrentPosition();
+        manualMode = false;
+        resetPID();
+    }
+
+    public static boolean isManualMode() {
+        return manualMode;
+    }
+
     public static void stop() {
         sorter.setPower(0.0);
+        manualMode = false;
         resetPID();
     }
 

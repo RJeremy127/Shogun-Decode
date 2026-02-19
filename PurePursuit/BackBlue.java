@@ -1,60 +1,64 @@
 package org.firstinspires.ftc.teamcode.PurePursuit;
 
-import com.qualcomm.hardware.limelightvision.LLResult;
-import com.qualcomm.hardware.limelightvision.LLResultTypes;
-import com.qualcomm.hardware.limelightvision.Limelight3A;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
-import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 
 import org.firstinspires.ftc.teamcode.datatypes.Pose;
-import org.firstinspires.ftc.teamcode.tools.Flywheel;
-import org.firstinspires.ftc.teamcode.tools.Sorter;
-import org.firstinspires.ftc.teamcode.tools.Tickle;
-import org.firstinspires.ftc.teamcode.tools.Turret;
-import org.firstinspires.ftc.teamcode.util.Actuation;
 
-import java.util.List;
+@Autonomous(name = "SHIT-Blue", group = "Auto")
+public class BackBlue extends AutoBase {
 
-@Autonomous(name="BackBlue")
-public class BackBlue extends LinearOpMode {
-    private Limelight3A lim;
-    double Tx, Ty;
+    @Override
     public void runOpMode() {
-        Actuation.setup(hardwareMap, new Pose(0,0,0), telemetry);
-        lim = hardwareMap.get(Limelight3A.class, "limelight");
-        telemetry.addData("Status", "Initialized");
-        telemetry.update();
-        lim.start();
+        // Pipeline 8 = blue goals, goal position TODO: TUNE
+        initAuto(new Pose(0, 0, 0), 8, 0, 72);
+
         waitForStart();
-        //8 is blue
-        //9 is red
-        lim.pipelineSwitch(8);
 
+        // Strafe right a little bit to get into shooting range
+        driveToWithUpdates(new Pose(0.5, 0, 0), 0.3, 0.2);
 
-            LLResult llresult = lim.getLatestResult();
-            while (!(llresult != null && llresult.isValid())) {
-                Turret.turn(-1);
-                llresult = lim.getLatestResult();
-            }
+        // === Cycle 1: Shoot 3 preloaded balls ===
+        telemetry.addData("Phase", "Shooting preloaded balls");
+        telemetry.update();
+        shootAllThree();
 
-            do {
-                List<LLResultTypes.FiducialResult> results = llresult.getFiducialResults();
-                Tx = llresult.getTx();
-                Ty = llresult.getTy();
-                llresult = lim.getLatestResult();
-            } while(Turret.autoTrack(Tx, Ty));
+        // === Cycle 2: Drive to first ball row, intake 3, shoot 3 ===
+        telemetry.addData("Phase", "Driving to ball row 1");
+        telemetry.update();
+        driveToWithUpdates(new Pose(-20, -15, 0), 0.5, 0.2); // TODO: TUNE position
 
+        telemetry.addData("Phase", "Intaking balls (row 1)");
+        telemetry.update();
+        intakeThreeBalls();
 
-        launch();
-        Pose [] p = new Pose[]{new Pose(0, -20, Math.toRadians(0))};
-        Route r = new Route(p);
-        r.run(.5, .2);
-    }
-    public void launch() {
-        Flywheel.setTargetVelocity(Flywheel.calculateTargetVelocity(Ty));
-        sleep(5000);
-        Tickle.flick();
-        sleep(2000);
-        Tickle.blockBall();
+        // Drive back to shooting position
+        telemetry.addData("Phase", "Returning to shoot position");
+        telemetry.update();
+        driveToWithUpdates(new Pose(0, 0, 0), 0.5, 0.2); // TODO: TUNE position
+
+        telemetry.addData("Phase", "Shooting cycle 2");
+        telemetry.update();
+        shootAllThree();
+
+        // === Cycle 3: Drive to second ball row, intake 3, shoot 3 ===
+        telemetry.addData("Phase", "Driving to ball row 2");
+        telemetry.update();
+        driveToWithUpdates(new Pose(-20, -30, 0), 0.5, 0.2); // TODO: TUNE position
+
+        telemetry.addData("Phase", "Intaking balls (row 2)");
+        telemetry.update();
+        intakeThreeBalls();
+
+        // Drive back to shooting position
+        telemetry.addData("Phase", "Returning to shoot position");
+        telemetry.update();
+        driveToWithUpdates(new Pose(0, 0, 0), 0.5, 0.2); // TODO: TUNE position
+
+        telemetry.addData("Phase", "Shooting cycle 3");
+        telemetry.update();
+        shootAllThree();
+
+        telemetry.addData("Phase", "DONE - 9 balls scored");
+        telemetry.update();
     }
 }

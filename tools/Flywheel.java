@@ -124,4 +124,26 @@ public class Flywheel {
                (-284.7872 * Ty) +
                2855.66642;
     }
+
+    // TX-based velocity equation coefficients
+    public static double txEqA = 1.0;
+    public static double txEqB = 2.0;
+    public static double txEqC = 1250.0;
+    public static double txEqMinVelocity = 1200;
+    public static double txEqMaxVelocity = 1600;
+    public static double txEqRoundTo = 25.0;
+
+    // Preset velocities
+    public static double closeRangeVelocity = 1250;
+    public static double longRangeVelocity = 1450;
+
+    /**
+     * Compute flywheel target velocity from Limelight tx using quadratic equation.
+     * Result is clamped to [txEqMinVelocity, txEqMaxVelocity] and rounded.
+     */
+    public static double calculateTargetVelocityFromTx(double tx) {
+        double raw = txEqA * tx * tx + txEqB * tx + txEqC;
+        raw = Math.max(txEqMinVelocity, Math.min(txEqMaxVelocity, raw));
+        return Math.round(raw / txEqRoundTo) * txEqRoundTo;
+    }
 }

@@ -67,8 +67,8 @@ public class AprilTagTest extends OpMode{
 
             //int tagID = JohnLimeLight.getTagID(results);
             //motif = JohnLimeLight.getMotif(tagID);
-            double Tx = llresult.getTx();
-            double Ty = llresult.getTy();
+            double Tx = llresult.getTy();
+            double Ty = llresult.getTx();
             double Ta = llresult.getTa();
             //double distance = JohnLimeLight.getDistance(mountAngle, Ty, LmHeight, TagHeight);
 

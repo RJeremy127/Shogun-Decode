@@ -6,13 +6,16 @@ import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
+import org.firstinspires.ftc.teamcode.util.MathFunctions;
+
 public class Turret {
     private static DcMotor motor;
     //PID
-    private static double kP = 0.01;
+    private static double kP = 0.005;
     private static double kI = 0.0001;
     private static double kD = 0.0008;
 
+    //here the values are inverted, test on the actual robot 
     private static int maxTicks = -199;
     private static int minTicks = 230;
     private static double motorPower = 0.6;
@@ -27,6 +30,26 @@ public class Turret {
     private static double minTx = -0.5;
     private static double maxTx = 0.5;
     private static double integralMax = 0.3;
+
+    // Wraparound: auto-return when turret exceeds bounds
+    public static boolean enableWraparound = true;
+    private static boolean wraparoundActive = false;
+    private static int wraparoundTarget = 0;
+    private static double wraparoundIntegral = 0;
+    private static double wraparoundLastError = 0;
+    private static double wraparoundStartTime = 0;
+    private static double wraparoundCooldownUntil = 0;
+    // Wraparound PID tuning
+    public static double wraparoundKP = 0.015;
+    public static double wraparoundKI = 0.0;
+    public static double wraparoundKD = 0.0005;
+    public static double wraparoundMaxPower = 0.4;
+    public static double wraparoundTolerance = 10.0;
+    public static double wraparoundIntegralMax = 0.3;
+    public static double wraparoundTimeoutSec = 5.0;
+    // Wraparound bounds (turret wraps from one to the other)
+    public static int wraparoundMinTicks = -314;
+    public static int wraparoundMaxTicks = 1004;
 
     // Field-centric heading compensation
     // Gear ratio 8:27 (27/8 = 3.375 reduction), motor TPR ~384.5
@@ -43,6 +66,11 @@ public class Turret {
         lastTx = 0;
         lastRobotHeading = 0;
         headingCompensationPower = 0;
+        // Initialize motor in position-hold mode at current position
+        target = motor.getCurrentPosition();
+        motor.setTargetPosition(target);
+        motor.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+        motor.setPower(motorPower);
     }
 
     public static void setRobotHeading(double heading) {
@@ -53,7 +81,7 @@ public class Turret {
     public static void compensateRotation(double currentHeading) {
         if (!fieldCentricEnabled) return;
 
-        double deltaHeading = currentHeading - lastRobotHeading;
+        double deltaHeading = MathFunctions.angleWrap(currentHeading - lastRobotHeading);
         lastRobotHeading = currentHeading;
 
         if (Math.abs(deltaHeading) < 1e-6) {
@@ -62,15 +90,20 @@ public class Turret {
         }
 
         int deltaTicks = (int) (-deltaHeading * ticksPerRadian);
-
-        // Adjust the RUN_TO_POSITION target (used when not tracking)
         target += deltaTicks;
-        if (motor.getMode() == DcMotor.RunMode.RUN_TO_POSITION) {
+
+        // Clamp target to wiring limits
+        target = Math.max(maxTicks, Math.min(minTicks, target));
+
+        // When not in tracking mode (RUN_WITHOUT_ENCODER), actively drive to compensated target
+        // track() uses RUN_WITHOUT_ENCODER, so this check distinguishes position-hold vs tracking
+        if (motor.getMode() != DcMotor.RunMode.RUN_WITHOUT_ENCODER) {
             motor.setTargetPosition(target);
+            motor.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+            motor.setPower(motorPower);
         }
 
         // Store compensation as feedforward power for tracking mode
-        // Scale: convert tick delta to proportional power
         headingCompensationPower = -deltaHeading * ticksPerRadian * kP;
         headingCompensationPower = Math.max(-motorPower, Math.min(motorPower, headingCompensationPower));
     }
@@ -96,6 +129,10 @@ public class Turret {
 
     public static int getPosition() {
         return motor.getCurrentPosition();
+    }
+
+    public static int getTargetPosition() {
+        return target;
     }
 
     public static void stop() {
@@ -161,6 +198,26 @@ public class Turret {
         return !(tx >= minTx && tx <= maxTx);
     }
 
+    /**
+     * Direct power control for manual turret movement (bumpers).
+     * Uses RUN_WITHOUT_ENCODER to avoid conflicts with tracking and compensation.
+     */
+    public static void manualTurn(double power) {
+        motor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        motor.setPower(power);
+    }
+
+    /**
+     * Call when releasing manual control (or disabling tracking) to sync
+     * target to current position and restore position-hold mode.
+     */
+    public static void syncAfterManual() {
+        target = motor.getCurrentPosition();
+        motor.setTargetPosition(target);
+        motor.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+        motor.setPower(motorPower);
+    }
+
     public static void resetPID() {
         integralSum = 0;
         lastTx = 0;
@@ -169,5 +226,93 @@ public class Turret {
 
     public static boolean isInDeadzone(double tx) {
         return tx >= minTx && tx <= maxTx;
+    }
+
+    /**
+     * Call every loop iteration to handle automatic wraparound.
+     * When turret exceeds wraparoundMaxTicks or falls below wraparoundMinTicks,
+     * PID-drives it to the opposite bound.
+     * @param dt time delta in seconds
+     * @return true if wraparound is currently active (callers should not send other turret commands)
+     */
+    public static boolean updateWraparound(double dt) {
+        if (!enableWraparound) return false;
+
+        int currentPos = motor.getCurrentPosition();
+        double now = timer.seconds();
+
+        // Check if we should start a wraparound
+        if (!wraparoundActive && now > wraparoundCooldownUntil) {
+            if (currentPos > wraparoundMaxTicks) {
+                wraparoundActive = true;
+                wraparoundTarget = wraparoundMinTicks;
+                wraparoundIntegral = 0;
+                wraparoundLastError = 0;
+                wraparoundStartTime = now;
+            } else if (currentPos < wraparoundMinTicks) {
+                wraparoundActive = true;
+                wraparoundTarget = wraparoundMaxTicks;
+                wraparoundIntegral = 0;
+                wraparoundLastError = 0;
+                wraparoundStartTime = now;
+            }
+        }
+
+        if (!wraparoundActive) return false;
+
+        double elapsed = now - wraparoundStartTime;
+
+        // Timeout: disable wraparound entirely
+        if (elapsed > wraparoundTimeoutSec) {
+            wraparoundActive = false;
+            wraparoundIntegral = 0;
+            wraparoundLastError = 0;
+            motor.setPower(0);
+            enableWraparound = false;
+            return false;
+        }
+
+        double error = wraparoundTarget - currentPos;
+
+        // Check if reached target
+        if (Math.abs(error) <= wraparoundTolerance) {
+            wraparoundActive = false;
+            wraparoundIntegral = 0;
+            wraparoundLastError = 0;
+            wraparoundCooldownUntil = now + 1.0;
+            motor.setPower(0);
+            return false;
+        }
+
+        // PID control
+        motor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        wraparoundIntegral += error * dt;
+        wraparoundIntegral = Math.max(-wraparoundIntegralMax, Math.min(wraparoundIntegralMax, wraparoundIntegral));
+
+        double derivative = (dt >= 1e-3) ? (error - wraparoundLastError) / dt : 0;
+
+        double output = (wraparoundKP * error) + (wraparoundKI * wraparoundIntegral) + (wraparoundKD * derivative);
+        output = Math.max(-wraparoundMaxPower, Math.min(wraparoundMaxPower, output));
+
+        motor.setPower(output);
+        wraparoundLastError = error;
+
+        return true;
+    }
+
+    public static boolean isWraparoundActive() {
+        return wraparoundActive;
+    }
+
+    public static void cancelWraparound() {
+        wraparoundActive = false;
+        wraparoundIntegral = 0;
+        wraparoundLastError = 0;
+        motor.setPower(0);
+    }
+
+    public static void setWraparoundBounds(int min, int max) {
+        wraparoundMinTicks = min;
+        wraparoundMaxTicks = max;
     }
 }
