@@ -17,7 +17,7 @@ public class RunTest extends LinearOpMode {
         motors = HardwareMapper.getMotors(hardwareMap);
         otto = new Odometry(new DcMotor[] {motors[1], motors[2], motors[0]}); // left, back, right
         double max;
-        double threshold = 0.07;
+        double threshold = 0.1;
         telemetry.addData("Status", "Initialized");
         telemetry.update();
         waitForStart();
@@ -54,7 +54,7 @@ public class RunTest extends LinearOpMode {
                 rightBackPower  /= max;
             }
 
-            double limit = .5;
+            double limit = 1;
             motors[3].setPower(leftFrontPower*limit);
             motors[2].setPower(rightFrontPower*limit);
             motors[1].setPower(leftBackPower*limit);

@@ -26,7 +26,7 @@ public class Flywheel {
     private static double integralMax = 0.3;
 
     public static void init(HardwareMap map) {
-        wheel = map.get(DcMotorEx.class, "flywheel");
+        wheel = map.get(DcMotorEx.class, "shooter");
         wheel.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
         wheel.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.FLOAT);
         wheel.setDirection(DcMotorSimple.Direction.REVERSE);

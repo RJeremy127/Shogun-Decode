@@ -22,7 +22,7 @@ public class Tickle {
     private static double currentPosition = minPosition;
 
     public static void init(HardwareMap map) {
-        tickle = map.get(Servo.class, "tickle");
+        tickle = map.get(Servo.class, "servo");
         currentPosition = minPosition;
         retract();
     }

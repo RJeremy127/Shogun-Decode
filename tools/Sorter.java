@@ -31,7 +31,7 @@ public class Sorter {
     private static double lastTime = 0;
 
     public static void init(HardwareMap map) {
-       sorter = map.get(DcMotor.class, "sorter");
+       sorter = map.get(DcMotor.class, "spindexer");
        sorter.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
        sorter.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
        sorter.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);

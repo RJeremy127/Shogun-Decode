@@ -22,8 +22,8 @@ public class Odometry {
     public static final double DEADWHEEL_CIRCUMFERENCE = 2*Math.PI*DEADWHEEL_RADIUS; // in IN
 
     //  odometry calculation constants
-    private static final double TRACKWIDTH = 12.51*12.47/12.56; //cmToIn(31.95);//28.33; //todo (do it in IN)
-    private static final double FORWARD_OFFSET = -7.11+(.37/6.28); //cmToIn(18.23); //todo (do it in IN)
+    private static final double TRACKWIDTH = cmToIn(37)*6.18/6.28; //cmToIn(31.95);//28.33; //todo (do it in IN)
+    private static final double FORWARD_OFFSET = -cmToIn(17)-(1.01)/12.56; //cmToIn(18.23); //todo (do it in IN)
 
     // used to grab encoders from the array with more readability
     public static final int LEFT = 0;
@@ -108,8 +108,9 @@ public class Odometry {
         double threshold = 0.01;
         double encoderLeft = -encoder_delta[LEFT];
         double backEncoder = -encoder_delta[BACK];
+        double encoderRight = encoder_delta[RIGHT];
         // I swapped these because I want axes to be centered on bot facing up
-        double delta_middle = (encoderLeft+ encoder_delta[RIGHT]) /2;// amount it turned minus amount turned in circle
+        double delta_middle = (encoderLeft+ encoderRight) /2;// amount it turned minus amount turned in circle
         double phi = (encoderLeft - encoder_delta[RIGHT]) / TRACKWIDTH;
         double delta_perp = (backEncoder - FORWARD_OFFSET * phi);
         backEnc+=backEncoder;

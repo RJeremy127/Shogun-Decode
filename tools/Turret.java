@@ -60,7 +60,7 @@ public class Turret {
     private static double headingCompensationPower = 0; // feedforward for tracking mode
 
     public static void init(HardwareMap map) {
-        motor = map.get(DcMotor.class, "turnTable");
+        motor = map.get(DcMotor.class, "turntable");
         timer.reset();
         lastTime = 0;
         lastTx = 0;

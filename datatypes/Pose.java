@@ -52,7 +52,7 @@ public class Pose {
 
     public void add(Matrix pose_delta) {
         for (int i = 0; i<this.pose.length; i++) {
-            pose[i] += pose_delta.getMatrix()[i][0];
+            pose[i] -= pose_delta.getMatrix()[i][0];
         }
     }
     public void subtract(double[] pose_delta) {
