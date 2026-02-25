@@ -4,31 +4,33 @@ import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 
 import org.firstinspires.ftc.teamcode.datatypes.Pose;
 
-@Autonomous(name = "SHIT-Red", group = "Auto")
+@Autonomous(name = "SHIFT-Red", group = "Auto")
 public class BackRed extends AutoBase {
 
+    double angle = Math.toRadians(90);
+    Pose shooting = new Pose(4,-14, 0);
+    Pose finalPose = new Pose(15, -14, angle);
     @Override
     public void runOpMode() {
-        // Pipeline 9 = red goals, goal position TODO: TUNE
-        initAuto(new Pose(0, 0, 0), 9, 0, 72);
+        // Pipeline 9 = red goals, search right
+        initAuto(new Pose(0, 0, 0), 9);
+        searchDirection = -1;
+        turretOffset = 0; // Compensate for tilted AprilTag
 
         waitForStart();
 
-        driveToWithUpdates(new Pose(-2, 0, 0), 0.3, 0.2);
+        driveToWithUpdates(shooting, 0.5, 0.5);
 
         // === Cycle 1: Shoot 3 preloaded balls ===
         telemetry.addData("Phase", "Shooting preloaded balls");
         telemetry.update();
         shootAllThree();
-
-        // === Cycle 2: Drive to first ball row, intake 3, shoot 3 ===
-        telemetry.addData("Phase", "Driving to ball row 1");
+        //driveToWithUpdates(finalPose, 0.5, 0.5);
+        /*
+        // === Cycle 2: Drive along first ball row while intaking, then shoot ===
+        telemetry.addData("Phase", "Driving + intaking row 1");
         telemetry.update();
-        driveToWithUpdates(new Pose(20, -15, 0), 0.5, 0.2); // TODO: TUNE position (mirrored X)
-
-        telemetry.addData("Phase", "Intaking balls (row 1)");
-        telemetry.update();
-        intakeThreeBalls();
+        driveAndIntake(new Pose(20, -15, 0), 0.3, 0.2, 10.0); // TODO: TUNE end position (mirrored X)
 
         // Drive back to shooting position
         telemetry.addData("Phase", "Returning to shoot position");
@@ -39,14 +41,10 @@ public class BackRed extends AutoBase {
         telemetry.update();
         shootAllThree();
 
-        // === Cycle 3: Drive to second ball row, intake 3, shoot 3 ===
-        telemetry.addData("Phase", "Driving to ball row 2");
+        // === Cycle 3: Drive along second ball row while intaking, then shoot ===
+        telemetry.addData("Phase", "Driving + intaking row 2");
         telemetry.update();
-        driveToWithUpdates(new Pose(20, -30, 0), 0.5, 0.2); // TODO: TUNE position (mirrored X)
-
-        telemetry.addData("Phase", "Intaking balls (row 2)");
-        telemetry.update();
-        intakeThreeBalls();
+        driveAndIntake(new Pose(20, -30, 0), 0.3, 0.2, 10.0); // TODO: TUNE end position (mirrored X)
 
         // Drive back to shooting position
         telemetry.addData("Phase", "Returning to shoot position");
@@ -59,5 +57,6 @@ public class BackRed extends AutoBase {
 
         telemetry.addData("Phase", "DONE - 9 balls scored");
         telemetry.update();
+         */
     }
 }

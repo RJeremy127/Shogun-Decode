@@ -29,7 +29,8 @@ public class Flywheel {
         wheel = map.get(DcMotorEx.class, "shooter");
         wheel.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
         wheel.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.FLOAT);
-        wheel.setDirection(DcMotorSimple.Direction.REVERSE);
+        wheel.setDirection(DcMotorSimple.Direction.FORWARD);
+        targetVelocity = 0;
         timer.reset();
         lastTime = 0;
         resetPID();
@@ -118,11 +119,8 @@ public class Flywheel {
     }
 
     public static double calculateTargetVelocity(double Ty) {
-        // Cubic equation: y = -0.43855x³ + 18.60014x² - 284.7872x + 2855.66642
-        return (-0.43855 * Math.pow(Ty, 3)) +
-               (18.60014 * Math.pow(Ty, 2)) +
-               (-284.7872 * Ty) +
-               2855.66642;
+        //linear equation: -34.21877x + 1178.87689
+        return -34.21877 * Ty + 1178.87689;
     }
 
     // TX-based velocity equation coefficients

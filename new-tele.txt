@@ -52,8 +52,8 @@ public class DynaJump extends LinearOpMode {
     @Configurable
     public static class ServoFlicker {
         public static double servoSpeed = 1;
-        public static double minPosition = 0.69;
-        public static double maxPosition = 0.87;
+        public static double minPosition = 0.18;
+        public static double maxPosition = 0.41;
         public static double flickUpWaitMs = 150;
         public static double flickDownWaitMs = 150;
         public static double postSpinWaitMs = 175;
@@ -67,13 +67,13 @@ public class DynaJump extends LinearOpMode {
     }
     @Configurable
     public static class Spindexer {
-        public static double kP = 0.005;
+        public static double kP = 0.003;
         public static double kI = 0.0001;
         public static double kD = 0.0001;
         public static double integralMax = 0.3;
         public static double maxPower = 1.0;
-        public static double stepTicks = 128.6666666;
-        public static double shootingModeOffset = 64.3333333;
+        public static double stepTicks = 183.333333333;
+        public static double shootingModeOffset = 91.66666666667;
         public static double positionTolerance = 10.0;
     }
     @Configurable
@@ -126,16 +126,16 @@ public class DynaJump extends LinearOpMode {
 
     @Configurable
     public static class PurpleSensor2 {
-        public static int redMin = 900;
-        public static int greenMin = 900;
-        public static int blueMin = 1700;
+        public static int redMin = 500;
+        public static int greenMin = 500;
+        public static int blueMin = 900;
     }
 
     @Configurable
     public static class GreenSensor2 {
         public static int redMin = 250;
-        public static int greenMin = 1200;
-        public static int blueMin = 800;
+        public static int greenMin = 800;
+        public static int blueMin = 500;
     }
     private DcMotorEx motor;
     private DcMotorEx turntable;
@@ -395,8 +395,8 @@ public class DynaJump extends LinearOpMode {
                 for (int cycle = 0; cycle < 3; cycle++) {
                     // Check if current order matches pattern
                     if (ballSlots[0].equals(currentPattern[0]) &&
-                        ballSlots[1].equals(currentPattern[1]) &&
-                        ballSlots[2].equals(currentPattern[2])) {
+                            ballSlots[1].equals(currentPattern[1]) &&
+                            ballSlots[2].equals(currentPattern[2])) {
                         matched = true;
                         break;
                     }
@@ -498,8 +498,8 @@ public class DynaJump extends LinearOpMode {
     private double computeFlywheelVelocityFromTx(double txValue) {
         // Placeholder equation: a*tx^2 + b*tx + c
         double raw = FlywheelEquation.a * txValue * txValue
-                    + FlywheelEquation.b * txValue
-                    + FlywheelEquation.c;
+                + FlywheelEquation.b * txValue
+                + FlywheelEquation.c;
         raw = Math.max(FlywheelEquation.minVelocity, Math.min(FlywheelEquation.maxVelocity, raw));
         // Round to nearest multiple
         double step = FlywheelEquation.roundTo;
@@ -977,8 +977,8 @@ public class DynaJump extends LinearOpMode {
             telemetry.addData("Intake Order", formatBallSlots());
         }
         telemetry.addData("Pattern", patternShootEnabled ?
-            "ON: " + String.join(", ", currentPattern) :
-            (patternSelected ? "OFF: " + String.join(", ", currentPattern) : "NONE SELECTED"));
+                "ON: " + String.join(", ", currentPattern) :
+                (patternSelected ? "OFF: " + String.join(", ", currentPattern) : "NONE SELECTED"));
         telemetry.addData("Tracking", Tracking.enableTracking ? "ON" : "OFF");
         telemetry.addData("Flywheel Eq", flywheelEquationEnabled ? "ON" : "OFF");
         if (turretWraparoundActive) {

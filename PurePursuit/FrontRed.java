@@ -9,8 +9,9 @@ public class FrontRed extends AutoBase {
 
     @Override
     public void runOpMode() {
-        // Pipeline 9 = red goals, goal position TODO: TUNE
-        initAuto(new Pose(0, 0, 0), 9, 0, 72);
+        // Pipeline 9 = red goals, search right
+        initAuto(new Pose(0, 0, 0), 9);
+        searchDirection = 1;
 
         waitForStart();
 

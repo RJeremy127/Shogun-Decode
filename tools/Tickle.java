@@ -8,12 +8,12 @@ public class Tickle {
     private static boolean flicked;
 
     // Servo positions
-    private static final double minPosition = 0.69;
-    private static final double maxPosition = 0.87;
+    private static final double minPosition = 0.18;
+    private static final double maxPosition = 1.0; //0.87
     private static final double transferPosition = 0.63;
     // Auto-transfer timing (ms)
-    public static final double flickUpWaitMs = 150;
-    public static final double flickDownWaitMs = 150;
+    public static final double flickUpWaitMs = 250;
+    public static final double flickDownWaitMs = 250;
     public static final double postSpinWaitMs = 175;
 
     // Servo control

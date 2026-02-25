@@ -21,107 +21,78 @@ public abstract class AutoBase extends LinearOpMode {
     protected double Tx = 0;
     protected double Ty = 0;
 
-    // Goal position for pre-aiming (field coordinates, inches)
-    protected double goalX = 0;
-    protected double goalY = 0;
+    // Search step: how many ticks to turn each loop when searching
+    private static final int SEARCH_STEP = 5;
 
-    // Sweep search constants
-    private static final int SWEEP_STEP = 5;
-    private static final int SWEEP_RANGE = 50;
+    // Search direction: -1 = left, +1 = right. Set by subclass.
+    protected int searchDirection = -1;
 
-    protected void initAuto(Pose startPose, int pipeline, double goalX, double goalY) {
+    // Turret offset in ticks to compensate for tilted AprilTag. Set by subclass.
+    protected int turretOffset = 0;
+
+    protected void initAuto(Pose startPose, int pipeline) {
         Actuation.setup(hardwareMap, startPose, telemetry);
         limelight = hardwareMap.get(Limelight3A.class, "limelight");
         limelight.start();
         limelight.pipelineSwitch(pipeline);
-        this.goalX = goalX;
-        this.goalY = goalY;
         telemetry.addData("Status", "Initialized");
         telemetry.update();
     }
 
     /**
-     * Pre-aim the turret toward the goal using odometry.
-     * Calculates the field-relative angle to the goal and moves the turret
-     * so the AprilTag is near the center of the Limelight's FOV.
-     */
-    protected void preAimAtGoal() {
-        Pose robot = Actuation.otto.getPose();
-        double dx = goalX - robot.getX();
-        double dy = goalY - robot.getY();
-        double fieldAngle = Math.atan2(dx, dy);
-        double turretAngle = MathFunctions.angleWrap(fieldAngle - robot.getR());
-        int targetTicks = (int) (turretAngle * Turret.ticksPerRadian);
-        int deltaTicks = targetTicks - Turret.getPosition();
-        Turret.turn(deltaTicks);
-    }
-
-    /**
      * Aim turret at Limelight target until turret is in deadzone.
-     * Pre-aims using odometry first, then fine-tracks with Limelight.
-     * If no target is found, sweeps turret back and forth to search.
+     * Turns continuously in searchDirection until the Limelight detects a target,
+     * then fine-tracks with PID.
      */
     protected void aimTurret() {
-        preAimAtGoal();
-
-        int sweepCenter = Turret.getPosition();
-        int sweepDirection = 1;
-        int sweepOffset = 0;
-
         ElapsedTime timeout = new ElapsedTime();
-        while (opModeIsActive() && timeout.seconds() < 3.0) {
+        while (opModeIsActive() && timeout.seconds() < 1.5) {
             Flywheel.update();
             Sorter.update();
             LLResult result = limelight.getLatestResult();
             if (result != null && result.isValid()) {
-                Tx = result.getTy();
-                Ty = result.getTx();
+                Tx = result.getTx();
+                Ty = result.getTy();
                 if (!Turret.autoTrack(Tx, Ty)) {
                     break; // In deadzone, turret is aimed
                 }
             } else {
-                // Sweep search: oscillate turret to find the tag
-                sweepOffset += SWEEP_STEP * sweepDirection;
-                if (Math.abs(sweepOffset) >= SWEEP_RANGE) {
-                    sweepDirection = -sweepDirection;
-                }
-                Turret.turn(SWEEP_STEP * sweepDirection);
+                // Turn continuously to search for the tag
+                Turret.turn(SEARCH_STEP * searchDirection);
             }
         }
     }
 
     /**
      * Aim turret and shoot one ball.
-     * 1. Pre-aim turret using odometry
-     * 2. Fine-track with Limelight (sweep if needed)
-     * 3. Spin flywheel to target velocity
-     * 4. Wait until at speed
-     * 5. Flick, wait, retract
+     * 1. Aim turret with Limelight (search if needed)
+     * 2. Spin flywheel to Ty-based target velocity
+     * 3. Wait until at speed
+     * 4. Flick, wait, retract
      */
     protected void aimAndShoot() {
         aimTurret();
 
-        // Set flywheel velocity
-        double targetVelocity = 1450;
-        Flywheel.setTargetVelocity(targetVelocity);
+        // Set flywheel velocity based on distance (Ty)
+        double targetVelocity = Flywheel.calculateTargetVelocity(Ty);
+        Flywheel.setTargetVelocity(1425); //1400
 
         // Wait for flywheel to reach speed
         ElapsedTime timeout = new ElapsedTime();
-        while (opModeIsActive() && !Flywheel.isAtSpeed(20) && timeout.seconds() < 3.0) {
+        while (opModeIsActive() && !Flywheel.isAtSpeed(20) && timeout.seconds() < 4.0) {
             Flywheel.update();
             Sorter.update();
             // Keep tracking while spinning up
             LLResult result = limelight.getLatestResult();
             if (result != null && result.isValid()) {
-                Tx = result.getTy();
-                Ty = result.getTx();
+                Tx = result.getTx();
+                Ty = result.getTy();
                 Turret.autoTrack(Tx, Ty);
             }
         }
-
         // Fire
         Tickle.flick();
-        sleep(300);
+        sleep(1000);
         Tickle.retract();
     }
 
@@ -134,6 +105,7 @@ public abstract class AutoBase extends LinearOpMode {
 
         for (int i = 0; i < 3 && opModeIsActive(); i++) {
             aimAndShoot();
+            sleep(1000);
 
             if (i < 2) {
                 // Advance sorter to next ball
@@ -193,6 +165,67 @@ public abstract class AutoBase extends LinearOpMode {
     protected void driveToWithUpdates(Pose target, double moveSpeed, double turnSpeed) {
         Route route = new Route(new Pose[]{target});
         route.run(moveSpeed, turnSpeed, this);
+    }
+
+    /**
+     * Drive along a row of balls while intaking.
+     * Drives from the current position toward endPose while running the intake
+     * and detecting balls with the color sensor. Stops when 3 balls are collected,
+     * the robot reaches the end of the row, or the timeout expires.
+     *
+     * @param endPose     End of the ball row to drive toward
+     * @param moveSpeed   Drive speed (0-1)
+     * @param turnSpeed   Turn speed (0-1)
+     * @param timeoutSec  Max time before giving up
+     */
+    protected void driveAndIntake(Pose endPose, double moveSpeed, double turnSpeed, double timeoutSec) {
+
+        int detectedBalls = 0;
+        boolean lastDetected = false;
+        Intake.intakeBall(0.8);
+
+        ElapsedTime timeout = new ElapsedTime();
+
+        while (opModeIsActive() && detectedBalls < 3 && timeout.seconds() < timeoutSec) {
+            // Drive toward end of row
+            Actuation.otto.updateOdometry();
+            Pose robotPose = Actuation.otto.getPose();
+            Pose worldPose = new Pose(
+                    robotPose.getX() + RobotMovement.initPos.getX(),
+                    robotPose.getY() + RobotMovement.initPos.getY(),
+                    robotPose.getR() + RobotMovement.initPos.getR());
+            RobotMovement.goToPosition(endPose, moveSpeed, turnSpeed);
+
+            // Check if we've reached the end of the row
+            boolean atEnd = MathFunctions.distance(worldPose.getPoint(), endPose.getPoint()) < 2
+                    && Math.abs(MathFunctions.angleWrap(endPose.getR() - worldPose.getR())) < Math.toRadians(3);
+
+            Flywheel.update();
+            Sorter.update();
+
+            // Ball detection
+            String color = Color.getColor();
+            boolean detected = (color != null);
+
+            if (detected && !lastDetected) {
+                detectedBalls++;
+                Sorter.updatePorts(color);
+                if (detectedBalls < 3) {
+                    Sorter.turn(1);
+                }
+                telemetry.addData("Balls Detected", detectedBalls);
+                telemetry.update();
+            }
+            lastDetected = detected;
+
+            // Stop driving if we reached the end but keep intaking if balls remain
+            if (atEnd) {
+                Actuation.drive(0, 0, 0);
+            }
+        }
+
+        Actuation.drive(0, 0, 0);
+        Intake.stop();
     }
 
     /**

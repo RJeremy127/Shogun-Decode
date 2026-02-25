@@ -9,17 +9,18 @@ import com.qualcomm.robotcore.util.ElapsedTime;
 public class Sorter {
     private static DcMotor sorter;
     static int targetPosition = 0;
-    static double stepTicks = 183.3333333;
-    public static double shootingModeOffset = 91.66666666667;
+    static double stepTicks = 180;
+    public static double shootingModeOffset = 90;
     private static boolean inShootingMode = false;
     static int currentPort = 0;
     private static int startPos = 1;
     static String[] ports = new String[3]; // "P", "G", or null
 
-    // PID gains
-    private static double kP = 0.01;
-    private static double kI = 0.0;
-    private static double kD = 0.0001;
+    // PID gains per ball count (index 0 = 0-1 balls, 1 = 2 balls, 2 = 3 balls)
+    //0.01
+    public static double[] kPs = {0.004, 0.004, 0.004}; //was 0.01
+    public static double[] kIs = {0.0001, 0.0001, 0.0001};
+    public static double[] kDs = {0.0001, 0.0001, 0.0001};
     private static double integralMax = 0.3;
     private static double maxPower = 1.0;
     private static double positionTolerance = 5.0;
@@ -35,6 +36,12 @@ public class Sorter {
        sorter.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
        sorter.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
        sorter.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+       // Reset all static state from previous OpMode runs
+       targetPosition = 0;
+       currentPort = 0;
+       inShootingMode = false;
+       manualMode = false;
+       clearPorts();
        timer.reset();
        lastTime = 0;
        resetPID();
@@ -62,6 +69,14 @@ public class Sorter {
         double error = targetPosition - currentPos;
 
         if (Math.abs(error) > positionTolerance) {
+            // Select PID gains based on ball count
+            int ballCount = getBallCount();
+            int pidIndex = Math.max(0, Math.min(2, ballCount - 1)); // 0-1 balls → 0, 2 → 1, 3 → 2
+            if (ballCount == 0) pidIndex = 0;
+            double kP = kPs[pidIndex];
+            double kI = kIs[pidIndex];
+            double kD = kDs[pidIndex];
+
             // Integral with anti-windup
             integralSum += error * dt;
             integralSum = Math.max(-integralMax, Math.min(integralMax, integralSum));
@@ -105,6 +120,14 @@ public class Sorter {
 
     public static boolean isBusy() {
         return Math.abs(targetPosition - sorter.getCurrentPosition()) > positionTolerance;
+    }
+
+    public static int getBallCount() {
+        int count = 0;
+        for (String item : ports) {
+            if (item != null) count++;
+        }
+        return count;
     }
 
     public static boolean isFull() {

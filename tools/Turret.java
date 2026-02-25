@@ -1,23 +1,18 @@
 package org.firstinspires.ftc.teamcode.tools;
 
-import static org.firstinspires.ftc.robotcore.external.BlocksOpModeCompanion.gamepad1;
-
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
-import org.firstinspires.ftc.teamcode.util.MathFunctions;
-
 public class Turret {
     private static DcMotor motor;
     //PID
-    private static double kP = 0.005;
+    private static double kP = 0.015; //was 0.005
     private static double kI = 0.0001;
     private static double kD = 0.0008;
 
-    //here the values are inverted, test on the actual robot 
-    private static int maxTicks = -199;
-    private static int minTicks = 230;
+    private static int minTicks = -354;
+    private static int maxTicks = 188;
     private static double motorPower = 0.6;
     private static int target = 0;
 
@@ -27,10 +22,11 @@ public class Turret {
     private static ElapsedTime timer = new ElapsedTime();
     private static double lastTime = 0;
     // Tracking deadzone (tx values within this range are considered "on target")
-    private static double minTx = -0.5;
-    private static double maxTx = 0.5;
+    private static double minTx = -0.4;
+    private static double maxTx = 0.4;
     private static double integralMax = 0.3;
 
+    /*
     // Wraparound: auto-return when turret exceeds bounds
     public static boolean enableWraparound = true;
     private static boolean wraparoundActive = false;
@@ -58,14 +54,14 @@ public class Turret {
     private static double lastRobotHeading = 0;
     private static boolean fieldCentricEnabled = true;
     private static double headingCompensationPower = 0; // feedforward for tracking mode
+    */
 
     public static void init(HardwareMap map) {
         motor = map.get(DcMotor.class, "turntable");
         timer.reset();
         lastTime = 0;
         lastTx = 0;
-        lastRobotHeading = 0;
-        headingCompensationPower = 0;
+        integralSum = 0;
         // Initialize motor in position-hold mode at current position
         target = motor.getCurrentPosition();
         motor.setTargetPosition(target);
@@ -73,6 +69,7 @@ public class Turret {
         motor.setPower(motorPower);
     }
 
+    /*
     public static void setRobotHeading(double heading) {
         lastRobotHeading = heading;
         headingCompensationPower = 0;
@@ -115,16 +112,14 @@ public class Turret {
     public static boolean isFieldCentricEnabled() {
         return fieldCentricEnabled;
     }
+    */
     public static void turn(int ticks) {
         target += ticks;
+        // Clamp target to wiring limits
+        target = Math.max(minTicks, Math.min(maxTicks, target));
         motor.setTargetPosition(target);
         motor.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-        // Only power motor when within safe bounds (-1150 to -240)
-        //if (motor.getCurrentPosition() >= rightBound && motor.getCurrentPosition() <= leftBound) {
         motor.setPower(motorPower);
-        //} else {
-         //   motor.setPower(0);  // Stop motor when out of bounds
-        //}
     }
 
     public static int getPosition() {
@@ -173,22 +168,20 @@ public class Turret {
         double power = (kP * error) + (kI * integralSum) + (kD * derivative);
         power = Math.max(-motorPower, Math.min(motorPower, power));
 
-        // Bounds checking
+        // Bounds checking: prevent driving past wiring limits
+        // +power → positive ticks (toward maxTicks=256)
+        // -power → negative ticks (toward minTicks=-315)
         int turretPos = motor.getCurrentPosition();
-        if (turretPos <= minTicks && power < 0) {
+        if (turretPos >= maxTicks && power > 0) {
+
             power = 0;
             integralSum = 0;
-        } else if (turretPos >= maxTicks && power > 0) {
+        } else if (turretPos <= minTicks && power < 0) {
             power = 0;
             integralSum = 0;
         }
 
-        // Add heading feedforward for field-centric compensation
-        power += headingCompensationPower;
-        power = Math.max(-motorPower, Math.min(motorPower, power));
-        headingCompensationPower = 0; // consume the feedforward
-
-        motor.setPower(-power);
+        motor.setPower(power);
         lastTx = error;
     }
     public static boolean autoTrack(double tx, double ty) {
@@ -204,7 +197,12 @@ public class Turret {
      */
     public static void manualTurn(double power) {
         motor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
-        motor.setPower(power);
+        int pos = motor.getCurrentPosition();
+        if ((pos >= maxTicks && power > 0) || (pos <= minTicks && power < 0)) {
+            motor.setPower(0);
+        } else {
+            motor.setPower(power);
+        }
     }
 
     /**
@@ -228,20 +226,13 @@ public class Turret {
         return tx >= minTx && tx <= maxTx;
     }
 
-    /**
-     * Call every loop iteration to handle automatic wraparound.
-     * When turret exceeds wraparoundMaxTicks or falls below wraparoundMinTicks,
-     * PID-drives it to the opposite bound.
-     * @param dt time delta in seconds
-     * @return true if wraparound is currently active (callers should not send other turret commands)
-     */
+    /*
     public static boolean updateWraparound(double dt) {
         if (!enableWraparound) return false;
 
         int currentPos = motor.getCurrentPosition();
         double now = timer.seconds();
 
-        // Check if we should start a wraparound
         if (!wraparoundActive && now > wraparoundCooldownUntil) {
             if (currentPos > wraparoundMaxTicks) {
                 wraparoundActive = true;
@@ -262,7 +253,6 @@ public class Turret {
 
         double elapsed = now - wraparoundStartTime;
 
-        // Timeout: disable wraparound entirely
         if (elapsed > wraparoundTimeoutSec) {
             wraparoundActive = false;
             wraparoundIntegral = 0;
@@ -274,7 +264,6 @@ public class Turret {
 
         double error = wraparoundTarget - currentPos;
 
-        // Check if reached target
         if (Math.abs(error) <= wraparoundTolerance) {
             wraparoundActive = false;
             wraparoundIntegral = 0;
@@ -284,7 +273,6 @@ public class Turret {
             return false;
         }
 
-        // PID control
         motor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
         wraparoundIntegral += error * dt;
         wraparoundIntegral = Math.max(-wraparoundIntegralMax, Math.min(wraparoundIntegralMax, wraparoundIntegral));
@@ -315,4 +303,5 @@ public class Turret {
         wraparoundMinTicks = min;
         wraparoundMaxTicks = max;
     }
+    */
 }

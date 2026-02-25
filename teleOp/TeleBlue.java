@@ -1,7 +1,6 @@
 package org.firstinspires.ftc.teamcode.teleOp;
 
 import com.qualcomm.hardware.limelightvision.LLResult;
-import com.qualcomm.hardware.limelightvision.LLResultTypes;
 import com.qualcomm.hardware.limelightvision.Limelight3A;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.util.ElapsedTime;
@@ -18,44 +17,37 @@ import org.firstinspires.ftc.teamcode.tools.Tickle;
 import org.firstinspires.ftc.teamcode.tools.Turret;
 import org.firstinspires.ftc.teamcode.util.Actuation;
 
-import java.util.List;
-
-@com.qualcomm.robotcore.eventloop.opmode.TeleOp(name="FUCK-BLUE", group="Linear OpMode")
+@com.qualcomm.robotcore.eventloop.opmode.TeleOp(name="FRICK-BLUE", group="Linear OpMode")
 public class TeleBlue extends LinearOpMode {
 
     private ElapsedTime runtime = new ElapsedTime();
-    private ElapsedTime flickTimer = new ElapsedTime();
     private Limelight3A limelight;
 
     // Button edge detection
-    private boolean lastSquare = false;
     private boolean lastTriangle2 = false;
     private boolean lastG1Cross = false;
     private boolean lastG2Cross = false;
     private boolean lastG1Triangle = false;
     private boolean lastG1Circle = false;
-    private boolean lastDpadDown = false;
-    private boolean lastG2Square = false;
-    private boolean lastDpadLeft = false;
-    private boolean lastTickle = false;
+    private boolean lastG1Square = false;
+    private boolean lastG1DpadLeft = false;
+    private boolean lastG1Guide = false;
     private boolean lastG2DpadDown = false;
     private boolean lastG2DpadUp = false;
     private boolean lastG2DpadLeft = false;
     private boolean lastG2DpadRight = false;
     private boolean lastG2Options = false;
     private boolean lastG2Share = false;
+    private boolean lastG2RightTrigger = false;
+    private boolean lastG2LeftTrigger = false;
 
     // State tracking
     private boolean isTrack = false;
-    private boolean isFlicked = false;
-    private boolean isSpinningUp = false;
-    private boolean isBlocking = false;
     private double targetFlywheelVelocity = 0;
     private double Tx;
     private double Ty;
+    private boolean limelightValid = false;
     private Point position = new Point(0, 0);
-    private boolean autoRetractPending = false;
-    private static final double RETRACT_DELAY_MS = 2000;
 
     // Intake toggle & outtake pulse
     private boolean intakeToggled = false;
@@ -75,8 +67,7 @@ public class TeleBlue extends LinearOpMode {
     private int transferStage = 0;
     private int flickCount = 0;
     private int originalDetectedBalls = 0;
-    private ElapsedTime transferTimer = new ElapsedTime();
-    private boolean transferTimerStarted = false;
+    private double transferStageStartTime = 0;
     private static final double TRANSFER_TIMEOUT_MS = 5000;
 
     // Pattern shoot system
@@ -87,20 +78,20 @@ public class TeleBlue extends LinearOpMode {
     // Flywheel equation mode
     private boolean flywheelEquationEnabled = false;
     private boolean shooterRumbled = false;
-    private double lastSeenTx = 0;
 
     // Turret manual control
     private boolean turretManualActive = false;
-    private boolean wasWrapping = false;
 
-    // Timing for wraparound and flywheel dt
-    private double lastTime = 0;
+    // Auto-retract flicker
+    private boolean flickPending = false;
+    private ElapsedTime flickTimer = new ElapsedTime();
+    private static final double FLICK_RETRACT_MS = 200;
+
 
     @Override
     public void runOpMode() {
         Actuation.setup(hardwareMap, new Pose(0, 0, 0), telemetry);
         limelight = hardwareMap.get(Limelight3A.class, "limelight");
-        JohnLimeLight.switchToObelisk(limelight);
         telemetry.addData("Status", "Initialized");
         telemetry.update();
         limelight.start();
@@ -110,50 +101,26 @@ public class TeleBlue extends LinearOpMode {
         waitForStart();
         limelight.pipelineSwitch(8);
         runtime.reset();
-        lastTime = runtime.seconds();
-        Turret.setRobotHeading(0);
 
         while (opModeIsActive()) {
-            double currentTime = runtime.seconds();
-            double dt = currentTime - lastTime;
-            lastTime = currentTime;
-            dt = Math.max(dt, 1e-3);
-
             // Update odometry for heading feedback
             Actuation.otto.updateOdometry();
 
-            // Field-centric turret compensation (disabled during Limelight tracking)
-            if (!isTrack) {
-                Turret.compensateRotation(Actuation.otto.getPose().getR());
-            }
-
-            isFlicked = Tickle.getStatus();
             LLResult llresult = limelight.getLatestResult();
 
             Flywheel.update();
             Sorter.update();
 
-            // Turret wraparound (takes priority over tracking/manual)
-            boolean wrapping = Turret.updateWraparound(dt);
-            if (wrapping && !wasWrapping) {
-                gamepad1.rumble(0.3, 0.3, 150);
-                gamepad2.rumble(0.3, 0.3, 150);
-            }
-            wasWrapping = wrapping;
-
-            if (llresult != null && llresult.isValid()) {
-                List<LLResultTypes.FiducialResult> results = llresult.getFiducialResults();
+            limelightValid = llresult != null && llresult.isValid();
+            if (limelightValid) {
                 Pose3D botpose = llresult.getBotpose();
                 position = JohnLimeLight.getPosition(botpose);
-                Tx = llresult.getTy();
-                Ty = llresult.getTx();
-                if (isTrack && !wrapping) { Turret.track(Tx, Ty); }
-            }
-
-            // Auto-retract flickers after shooting
-            if (autoRetractPending && flickTimer.milliseconds() >= RETRACT_DELAY_MS) {
-                Tickle.retract();
-                autoRetractPending = false;
+                Tx = llresult.getTx();
+                Ty = llresult.getTy();
+                if (isTrack) { Turret.track(Tx, Ty); }
+            } else {
+                Tx = 0;
+                Ty = 0;
             }
 
             // Intake outtake pulse timer
@@ -169,14 +136,20 @@ public class TeleBlue extends LinearOpMode {
                 runTransfer();
             }
 
+            // Auto-retract flicker after delay (non-transfer flicks only)
+            if (flickPending && flickTimer.milliseconds() >= FLICK_RETRACT_MS) {
+                Tickle.retract();
+                flickPending = false;
+            }
+
             // Flywheel at-speed rumble
             if (targetFlywheelVelocity > 0 && Flywheel.isAtSpeed(50) && !shooterRumbled) {
                 gamepad1.rumble(1.0, 1.0, 1000);
                 shooterRumbled = true;
             }
 
-            pad1(wrapping);
-            pad2(wrapping, dt);
+            pad1();
+            pad2();
 
             // Telemetry
             telemetry.addData("Shooting Mode", shootingMode
@@ -189,21 +162,14 @@ public class TeleBlue extends LinearOpMode {
             telemetry.addData("Pattern", patternShootEnabled
                     ? "ON: " + String.join(", ", currentPattern)
                     : (patternSelected ? "OFF: " + String.join(", ", currentPattern) : "NONE"));
-            telemetry.addData("Field-Centric", Turret.isFieldCentricEnabled() ? "ON" : "OFF");
             telemetry.addData("Flywheel Eq", flywheelEquationEnabled ? "ON" : "OFF");
-            if (Turret.isWraparoundActive()) {
-                telemetry.addData("Turret", "WRAPPING @ " + Turret.getPosition());
-            } else {
-                telemetry.addData("Turret", Turret.getPosition() + " / target " + Turret.getTargetPosition());
-            }
+            telemetry.addData("Turret", Turret.getPosition() + " / target " + Turret.getTargetPosition());
             telemetry.addData("Balls", detectedBalls + "/3");
             telemetry.addData("Flywheel", (int) Flywheel.getVelocity() + " / " + (int) targetFlywheelVelocity);
             telemetry.addData("Sorter", Sorter.getPosition() + " → " + Sorter.getTargetPosition());
             telemetry.addData("Intake", intakeActive ? (intakeToggled ? "ON" : "OFF") : "PULSE");
             // Limelight tracking telemetry
-            LLResult llTelemetry = limelight.getLatestResult();
-            boolean llValid = llTelemetry != null && llTelemetry.isValid();
-            telemetry.addData("Limelight", llValid ? "VALID" : "NO TARGET");
+            telemetry.addData("Limelight", limelightValid ? "VALID" : "NO TARGET");
             telemetry.addData("Tracking", isTrack ? "ON" : "OFF");
             telemetry.addData("Tx", "%.2f", Tx);
             telemetry.addData("Ty", "%.2f", Ty);
@@ -218,16 +184,16 @@ public class TeleBlue extends LinearOpMode {
     // Left Stick: Drive (strafe)
     // Right Stick: Turn
     // Cross (X): Toggle intake
-    // Triangle: Enter shooting mode
+    // Triangle: Toggle shooting mode (enter/cancel)
     // Circle: Start shoot transfer
     // Square: Add unknown ball + advance spindexer
     // Dpad Left: Reverse spindexer 1 step
-    // Dpad Right: Outtake
-    // Left Bumper: Turret manual left
-    // Right Bumper: Turret manual right
+    // Dpad Right: Outtake (also triggered by G2 Circle)
+    // Left Bumper: Turret manual right (+0.2)
+    // Right Bumper: Turret manual left (-0.2)
     // Left Trigger: Spindexer manual CCW (direct power)
     // Right Trigger: Spindexer manual CW (direct power)
-    public void pad1(boolean wrapping) {
+    public void pad1()  {
         // Drive
         double axial = -gamepad1.left_stick_y;
         double lateral = gamepad1.left_stick_x;
@@ -253,63 +219,73 @@ public class TeleBlue extends LinearOpMode {
             Intake.stop();
         }
 
-        // --- Triangle: Enter shooting mode ---
+        // --- Triangle: Toggle shooting mode ---
         boolean currentTriangle = gamepad1.triangle;
-        if (currentTriangle && !lastG1Triangle && !shootingMode && !transferActive) {
-            shootingMode = true;
-            Sorter.enterShootingMode();
-            rotateForShooting();
-            gamepad1.rumble(1.0, 1.0, 500);
+        if (currentTriangle && !lastG1Triangle && !transferActive) {
+            if (!shootingMode) {
+                shootingMode = true;
+                shooterRumbled = false;
+                Sorter.enterShootingMode();
+                rotateForShooting();
+                gamepad1.rumble(1.0, 1.0, 500);
+            } else {
+                shootingMode = false;
+                Sorter.exitShootingMode();
+                shooterRumbled = false;
+                gamepad1.rumble(0.3, 0.3, 200);
+            }
         }
         lastG1Triangle = currentTriangle;
 
-        // --- Circle: Start shoot transfer ---
+        // --- Circle: Start transfer (shooting mode only) ---
         boolean currentCircle = gamepad1.circle;
-        if (currentCircle && !lastG1Circle && shootingMode && !transferActive) {
-            if (detectedBalls == 0) {
-                gamepad1.rumble(0.5, 0.5, 200);
-            } else {
+        if (currentCircle && !lastG1Circle) {
+            if (shootingMode && !transferActive && detectedBalls > 0 && targetFlywheelVelocity > 0) {
                 transferActive = true;
                 transferStage = 0;
                 flickCount = 0;
                 originalDetectedBalls = detectedBalls;
-                transferTimerStarted = false;
+                transferStageStartTime = runtime.milliseconds();
             }
         }
         lastG1Circle = currentCircle;
 
+        // --- PS/Guide: Standalone flick ---
+        boolean currentGuide = gamepad1.ps;
+        if (currentGuide && !lastG1Guide) {
+            Tickle.flick();
+            flickPending = true;
+            flickTimer.reset();
+        }
+        lastG1Guide = currentGuide;
+
         // --- Square: Add unknown ball + advance spindexer ---
         boolean currentSquare = gamepad1.square;
-        if (currentSquare && !lastDpadLeft && !shootingMode && !transferActive) {
+        if (currentSquare && !lastG1Square && !shootingMode && !transferActive) {
             if (detectedBalls < 3) {
                 addBall("?");
                 detectedBalls++;
+                Sorter.updatePorts("?");
             }
             Sorter.turn(1);
             manualSpinUsed = true;
         }
-        lastDpadLeft = currentSquare;
+        lastG1Square = currentSquare;
 
         // --- Dpad Left: Reverse spindexer 1 step ---
         boolean g1left = gamepad1.dpad_left;
-        if (g1left && !lastG2DpadLeft && !transferActive) {
+        if (g1left && !lastG1DpadLeft && !transferActive) {
             Sorter.turn(-1);
             manualSpinUsed = true;
         }
-        lastG2DpadLeft = g1left;
+        lastG1DpadLeft = g1left;
 
-        // --- Both bumpers: Emergency wraparound cancel ---
-        if (gamepad1.left_bumper && gamepad1.right_bumper) {
-            Turret.cancelWraparound();
-            gamepad1.rumble(1.0, 1.0, 300);
-        }
-
-        // --- Bumpers: Manual turret control (only when not tracking and not wrapping) ---
-        if (!wrapping && !isTrack) {
+        // --- Bumpers: Manual turret control (only when not tracking) ---
+        if (!isTrack) {
             if (gamepad1.right_bumper) {
-                Turret.manualTurn(0.2);
+                Turret.manualTurn(-0.05);
             } else if (gamepad1.left_bumper) {
-                Turret.manualTurn(-0.2);
+                Turret.manualTurn(0.05);
             } else if (!gamepad2.right_bumper && !gamepad2.left_bumper) {
                 // Only sync if neither gamepad has bumpers pressed
                 if (turretManualActive) {
@@ -323,55 +299,37 @@ public class TeleBlue extends LinearOpMode {
         }
 
         // --- Triggers: Spindexer manual direct power ---
-        if (gamepad1.right_trigger > 0.1) {
-            Sorter.setManualPower(gamepad1.right_trigger);
-        } else if (gamepad1.left_trigger > 0.1) {
-            Sorter.setManualPower(-gamepad1.left_trigger);
+        if (gamepad1.right_trigger > 0.5) {
+            Sorter.setManualPower(0.2);
+        } else if (gamepad1.left_trigger > 0.5) {
+            Sorter.setManualPower(-0.2);
         } else if (Sorter.isManualMode()) {
             // Zero-reset on release: sync target to current position
             Sorter.syncTarget();
         }
     }
-
     // gamepad 2 controls:
-    // Square: Field-centric turret toggle
     // Triangle: Toggle turret tracking (Limelight)
     // Cross (X): Toggle flywheel equation on/off
-    // Circle (O): Outtake
+    // Circle (O): Outtake (handled in pad1 outtake logic)
     // Dpad Down: Toggle pattern shoot
     // Dpad Left: Motif 21 (G, P, P)
     // Dpad Up: Motif 22 (P, G, P)
     // Dpad Right: Motif 23 (P, P, G)
-    // Bumpers: Manual turret control
-    // Right Trigger: Spindex clockwise
-    // Left Trigger: Spindex counterclockwise
+    // Left Bumper: Turret manual right (+0.2)
+    // Right Bumper: Turret manual left (-0.2)
+    // Right Trigger: Spindex clockwise (edge-detected)
+    // Left Trigger: Spindex counterclockwise (edge-detected)
     // Share: Close range flywheel preset (1250)
     // Options: Long range flywheel preset (1450)
-    public void pad2(boolean wrapping, double dt) {
-
-        // --- Square: Field-centric turret toggle ---
-        if (gamepad2.square && !lastSquare) {
-            boolean nowEnabled = !Turret.isFieldCentricEnabled();
-            Turret.setFieldCentricEnabled(nowEnabled);
-            if (nowEnabled) {
-                Turret.setRobotHeading(Actuation.otto.getPose().getR());
-                gamepad2.rumbleBlips(1);
-            } else {
-                gamepad2.rumbleBlips(2);
-            }
-            lastSquare = true;
-        }
-        if (!gamepad2.square) {
-            lastSquare = false;
-        }
+    public void pad2() {
 
         // --- Triangle: Toggle turret tracking ---
         if (gamepad2.triangle && !lastTriangle2) {
             isTrack = !isTrack;
             if (!isTrack) {
                 Turret.resetPID();
-                Turret.syncAfterManual(); // restore RUN_TO_POSITION so field-centric keeps working
-                Turret.setRobotHeading(Actuation.otto.getPose().getR()); // resync heading to avoid jump
+                Turret.syncAfterManual();
             }
             lastTriangle2 = true;
         }
@@ -395,14 +353,9 @@ public class TeleBlue extends LinearOpMode {
         }
         lastG2Cross = g2Cross;
 
-        // --- Circle (O): Outtake ---
-        if (gamepad2.circle) {
-            Intake.intakeBall(-1.0);
-        }
-
         // --- Dpad Down: Toggle pattern shoot (requires a motif to be selected first) ---
         boolean g2DpadDown = gamepad2.dpad_down;
-        if (g2DpadDown && !lastDpadDown) {
+        if (g2DpadDown && !lastG2DpadDown) {
             if (!patternSelected) {
                 gamepad2.rumble(1.0, 0.0, 300); // reject: no motif selected
             } else {
@@ -410,7 +363,7 @@ public class TeleBlue extends LinearOpMode {
                 gamepad2.rumbleBlips(patternShootEnabled ? 1 : 2);
             }
         }
-        lastDpadDown = g2DpadDown;
+        lastG2DpadDown = g2DpadDown;
 
         // --- Dpad Left: Motif 21 (G, P, P) ---
         boolean g2DpadLeft = gamepad2.dpad_left;
@@ -439,18 +392,12 @@ public class TeleBlue extends LinearOpMode {
         }
         lastG2DpadRight = g2DpadRight;
 
-        // --- Both bumpers: Emergency wraparound cancel ---
-        if (gamepad2.left_bumper && gamepad2.right_bumper) {
-            Turret.cancelWraparound();
-            gamepad2.rumble(1.0, 1.0, 300);
-        }
-
-        // --- Bumpers: Manual turret control (only when not tracking and not wrapping) ---
-        if (!wrapping && !isTrack) {
+        // --- Bumpers: Manual turret control (only when not tracking) ---
+        if (!isTrack) {
             if (gamepad2.right_bumper) {
-                Turret.manualTurn(-0.2);
+                Turret.manualTurn(-0.1);
             } else if (gamepad2.left_bumper) {
-                Turret.manualTurn(0.2);
+                Turret.manualTurn(0.1);
             } else if (!gamepad1.right_bumper && !gamepad1.left_bumper) {
                 if (turretManualActive) {
                     Turret.syncAfterManual();
@@ -462,17 +409,21 @@ public class TeleBlue extends LinearOpMode {
             }
         }
 
-        // --- Right Trigger: Spindex clockwise ---
-        if (gamepad2.right_trigger > 0.2 && !Sorter.isBusy()) {
+        // --- Right Trigger: Spindex clockwise (edge-detected) ---
+        boolean g2RightTrigger = gamepad2.right_trigger > 0.2;
+        if (g2RightTrigger && !lastG2RightTrigger && !Sorter.isBusy()) {
             Sorter.turn(1);
             manualSpinUsed = true;
         }
+        lastG2RightTrigger = g2RightTrigger;
 
-        // --- Left Trigger: Spindex counterclockwise ---
-        if (gamepad2.left_trigger > 0.2 && !Sorter.isBusy()) {
+        // --- Left Trigger: Spindex counterclockwise (edge-detected) ---
+        boolean g2LeftTrigger = gamepad2.left_trigger > 0.2;
+        if (g2LeftTrigger && !lastG2LeftTrigger && !Sorter.isBusy()) {
             Sorter.turn(-1);
             manualSpinUsed = true;
         }
+        lastG2LeftTrigger = g2LeftTrigger;
 
         // --- Share: Close range flywheel preset (1250) ---
         boolean g2Share = gamepad2.share;
@@ -480,7 +431,6 @@ public class TeleBlue extends LinearOpMode {
             targetFlywheelVelocity = Flywheel.closeRangeVelocity;
             Flywheel.setTargetVelocity(targetFlywheelVelocity);
             shooterRumbled = false;
-            isSpinningUp = true;
             gamepad2.rumble(0.3, 0.3, 150);
         }
         lastG2Share = g2Share;
@@ -491,20 +441,14 @@ public class TeleBlue extends LinearOpMode {
             targetFlywheelVelocity = Flywheel.longRangeVelocity;
             Flywheel.setTargetVelocity(targetFlywheelVelocity);
             shooterRumbled = false;
-            isSpinningUp = true;
             gamepad2.rumble(0.3, 0.3, 150);
         }
         lastG2Options = g2Options;
 
-        // --- Flywheel equation: compute target from tx ---
-        if (flywheelEquationEnabled) {
-            LLResult result = limelight.getLatestResult();
-            if (result != null && result.isValid()) {
-                lastSeenTx = result.getTy();
-            }
-            targetFlywheelVelocity = Flywheel.calculateTargetVelocityFromTx(lastSeenTx);
+        // --- Flywheel equation: compute target from Ty (only with valid Limelight data) ---
+        if (flywheelEquationEnabled && limelightValid) {
+            targetFlywheelVelocity = Flywheel.calculateTargetVelocity(Ty);
             Flywheel.setTargetVelocity(targetFlywheelVelocity);
-            isSpinningUp = true;
         }
     }
 
@@ -523,11 +467,13 @@ public class TeleBlue extends LinearOpMode {
             if (currentColorDetected && !ballDetectedLastLoop && detectedBalls < 3) {
                 addBall(currentColor);
                 detectedBalls++;
+                Sorter.updatePorts(currentColor);
                 Sorter.turn(1);
                 ballAdded = true;
 
                 if (detectedBalls == 3) {
                     shootingMode = true;
+                    shooterRumbled = false;
                     Sorter.enterShootingMode();
                     rotateForShooting();
                     gamepad1.rumble(1.0, 1.0, 500);
@@ -545,82 +491,68 @@ public class TeleBlue extends LinearOpMode {
     }
 
     private void runTransfer() {
+        double elapsed = runtime.milliseconds() - transferStageStartTime;
+
         // Timeout guard
-        if (transferTimerStarted && transferTimer.milliseconds() >= TRANSFER_TIMEOUT_MS) {
+        if (elapsed > TRANSFER_TIMEOUT_MS) {
             transferActive = false;
             shootingMode = false;
             Sorter.exitShootingMode();
-            clearBalls();
+            intakeToggled = false;
+            shooterRumbled = false;
             gamepad1.rumble(1.0, 1.0, 300);
+            telemetry.addData("ERROR", "Transfer timeout!");
             return;
         }
 
         switch (transferStage) {
-            case 0: // Flick up
+            case 0: // Flick UP — command servo and wait
                 Tickle.flick();
-                if (Tickle.isAtMax()) {
-                    if (!transferTimerStarted) {
-                        transferTimer.reset();
-                        transferTimerStarted = true;
-                    }
-                    if (transferTimer.milliseconds() >= Tickle.flickUpWaitMs) {
-                        transferStage = 1;
-                        transferTimerStarted = false;
-                    }
+                if (elapsed >= Tickle.flickUpWaitMs) {
+                    transferStage = 1;
+                    transferStageStartTime = runtime.milliseconds();
                 }
                 break;
 
             case 1: // Retract
                 Tickle.retract();
-                if (Tickle.isAtMin()) {
-                    if (!transferTimerStarted) {
-                        transferTimer.reset();
-                        transferTimerStarted = true;
-                    }
-                    if (transferTimer.milliseconds() >= Tickle.flickDownWaitMs) {
-                        flickCount++;
-                        transferTimerStarted = false;
+                if (elapsed >= Tickle.flickDownWaitMs) {
+                    flickCount++;
 
-                        // Shift ball slots after each flick
-                        for (int i = 0; i < 2; i++) {
-                            ballSlots[i] = ballSlots[i + 1];
-                        }
-                        ballSlots[2] = null;
-                        detectedBalls--;
-
-                        if (flickCount >= originalDetectedBalls) {
-                            // Transfer complete
-                            transferActive = false;
-                            shootingMode = false;
-                            Sorter.exitShootingMode();
-                            clearBalls();
-                            intakeToggled = false;
-                            gamepad1.rumble(0.3, 0.3, 200);
-                        } else {
-                            // Advance sorter then flick again
-                            transferStage = 2;
-                        }
+                    if (flickCount >= 3) {
+                        // All 3 flicks done — back to intake mode
+                        transferActive = false;
+                        shootingMode = false;
+                        Sorter.exitShootingMode();
+                        clearBalls();
+                        intakeToggled = false;
+                        shooterRumbled = false;
+                        gamepad1.rumble(0.3, 0.3, 200);
+                    } else {
+                        // Advance sorter before next flick
+                        transferStage = 2;
+                        transferStageStartTime = runtime.milliseconds();
                     }
                 }
                 break;
 
-            case 2: // Advance sorter
+            case 2: // Advance sorter one step
                 Sorter.turn(1);
                 transferStage = 3;
+                transferStageStartTime = runtime.milliseconds();
                 break;
 
             case 3: // Wait for sorter to reach position
                 if (!Sorter.isBusy()) {
                     transferStage = 4;
-                    transferTimer.reset();
-                    transferTimerStarted = true;
+                    transferStageStartTime = runtime.milliseconds();
                 }
                 break;
 
             case 4: // Post-spin wait before next flick
-                if (transferTimer.milliseconds() >= Tickle.postSpinWaitMs) {
+                if (elapsed >= Tickle.postSpinWaitMs) {
                     transferStage = 0;
-                    transferTimerStarted = false;
+                    transferStageStartTime = runtime.milliseconds();
                 }
                 break;
         }
@@ -692,6 +624,7 @@ public class TeleBlue extends LinearOpMode {
         }
         detectedBalls = 0;
         ballDetectedLastLoop = false;
+        Sorter.clearPorts();
     }
 
     private String formatBallSlots() {
