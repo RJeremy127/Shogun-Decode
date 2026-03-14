@@ -10,7 +10,6 @@ import org.firstinspires.ftc.teamcode.tools.Color;
 import org.firstinspires.ftc.teamcode.tools.Flywheel;
 import org.firstinspires.ftc.teamcode.tools.Intake;
 import org.firstinspires.ftc.teamcode.tools.Sorter;
-import org.firstinspires.ftc.teamcode.tools.Tickle;
 import org.firstinspires.ftc.teamcode.tools.Turret;
 import org.firstinspires.ftc.teamcode.util.Actuation;
 import org.firstinspires.ftc.teamcode.util.MathFunctions;
@@ -20,9 +19,7 @@ public abstract class AutoBase extends LinearOpMode {
     protected Limelight3A limelight;
     protected double Tx = 0;
     protected double Ty = 0;
-
-    // Search step: how many ticks to turn each loop when searching
-    private static final int SEARCH_STEP = 5;
+    protected int goalPipeline = 8;
 
     // Search direction: -1 = left, +1 = right. Set by subclass.
     protected int searchDirection = -1;
@@ -31,10 +28,13 @@ public abstract class AutoBase extends LinearOpMode {
     protected int turretOffset = 0;
 
     protected void initAuto(Pose startPose, int pipeline) {
+        goalPipeline = pipeline;
         Actuation.setup(hardwareMap, startPose, telemetry);
+        Sorter.preloadBalls("green", "purple", "purple");
         limelight = hardwareMap.get(Limelight3A.class, "limelight");
         limelight.start();
-        limelight.pipelineSwitch(pipeline);
+        limelight.pipelineSwitch(goalPipeline);
+        Flywheel.setTargetVelocity(500);
         telemetry.addData("Status", "Initialized");
         telemetry.update();
     }
@@ -45,22 +45,26 @@ public abstract class AutoBase extends LinearOpMode {
      * then fine-tracks with PID.
      */
     protected void aimTurret() {
+        Turret.TurretTracking.enableTracking = true;
         ElapsedTime timeout = new ElapsedTime();
-        while (opModeIsActive() && timeout.seconds() < 1.5) {
-            Flywheel.update();
-            Sorter.update();
+        while (opModeIsActive() && timeout.seconds() < 1.0) {
+            Flywheel.update(0.02);
+            Sorter.updateSlew();
             LLResult result = limelight.getLatestResult();
             if (result != null && result.isValid()) {
                 Tx = result.getTx();
                 Ty = result.getTy();
-                if (!Turret.autoTrack(Tx, Ty)) {
-                    break; // In deadzone, turret is aimed
+                Turret.update(0.02, Tx, false, false);
+                if (Math.abs(Tx) <= Turret.TurretTracking.txDeadzone) {
+                    break;
                 }
             } else {
-                // Turn continuously to search for the tag
-                Turret.turn(SEARCH_STEP * searchDirection);
+                // No target — search by spinning turret directly (bypass update which zeroes power)
+                Turret.manualTurn(searchDirection * 0.15);
             }
         }
+        Turret.TurretTracking.enableTracking = false;
+        Turret.stop();
     }
 
     /**
@@ -73,81 +77,80 @@ public abstract class AutoBase extends LinearOpMode {
     protected void aimAndShoot() {
         aimTurret();
 
-        // Set flywheel velocity based on distance (Ty)
-        double targetVelocity = Flywheel.calculateTargetVelocity(Ty);
-        Flywheel.setTargetVelocity(1425); //1400
+        Flywheel.setTargetVelocity(1425);
 
-        // Wait for flywheel to reach speed
+        // Wait for flywheel to reach speed, keep tracking
+        Turret.TurretTracking.enableTracking = true;
         ElapsedTime timeout = new ElapsedTime();
-        while (opModeIsActive() && !Flywheel.isAtSpeed(20) && timeout.seconds() < 4.0) {
-            Flywheel.update();
-            Sorter.update();
-            // Keep tracking while spinning up
+        while (opModeIsActive() && !Flywheel.isAtSpeed(20) && timeout.seconds() < 5.0) {
+            Flywheel.update(0.02);
+            Sorter.updateSlew();
             LLResult result = limelight.getLatestResult();
             if (result != null && result.isValid()) {
                 Tx = result.getTx();
                 Ty = result.getTy();
-                Turret.autoTrack(Tx, Ty);
+                Turret.update(0.02, Tx, false, false);
+            } else {
+                // No target — keep searching
+                Turret.manualTurn(searchDirection * 0.15);
             }
         }
-        // Fire
-        Tickle.flick();
-        sleep(1000);
-        Tickle.retract();
+        Turret.TurretTracking.enableTracking = false;
+        // Force transfer regardless of ball count
+        Sorter.TransferSettings.preventZeroBallTransfer = false;
+        Sorter.startTransfer();
+        ElapsedTime transferTimeout = new ElapsedTime();
+        while (opModeIsActive() && Sorter.isTransferActive() && transferTimeout.seconds() < 7.0) {
+            Flywheel.update(0.02);
+            Sorter.updateSlew();
+            Sorter.checkPendingTransfer();
+            Sorter.updateTransferMotor(0);
+            Sorter.handleTransfer();
+        }
+        // Stop transfer motor after shooting
+        Sorter.stopTransfer();
     }
 
     /**
-     * Shoot all 3 balls from the sorter.
-     * Enters shooting mode, fires 3 times with sorter advancement, then exits shooting mode.
+     * Shoot all balls from the sorter.
+     * Goes to port 0 (no sorting), does a full rotation transfer to fire everything.
      */
     protected void shootAllThree() {
-        Sorter.enterShootingMode();
-
-        for (int i = 0; i < 3 && opModeIsActive(); i++) {
-            aimAndShoot();
-            sleep(1000);
-
-            if (i < 2) {
-                // Advance sorter to next ball
-                Sorter.turn(1);
-                // Wait for sorter to reach position
-                ElapsedTime sorterTimeout = new ElapsedTime();
-                while (opModeIsActive() && Sorter.isBusy() && sorterTimeout.seconds() < 2.0) {
-                    Sorter.update();
-                    Flywheel.update();
-                }
-            }
+        // Go to port 0 (no color sorting) and wait for settle
+        Sorter.turnToPort(0);
+        ElapsedTime settleTimeout = new ElapsedTime();
+        while (opModeIsActive() && !Sorter.isSettled() && settleTimeout.seconds() < 2.0) {
+            Sorter.updateSlew();
         }
 
-        Sorter.exitShootingMode();
-        Flywheel.setTargetVelocity(0);
+        // Aim and fire (full rotation regardless of ball count)
+        aimAndShoot();
+        // Flywheel stays at idle 800 RPM — set in initAuto
+        Flywheel.setTargetVelocity(800);
     }
 
     /**
-     * Intake 3 balls with color detection.
+     * Intake 3 balls without color sorting.
      * Runs intake motor and uses Color sensor to detect rising edges.
-     * Advances sorter on each ball detection.
+     * Commits balls as "unknown" (no color sorting).
      */
     protected void intakeThreeBalls() {
         int detectedBalls = 0;
         boolean lastDetected = false;
-        Intake.intakeBall(0.8);
+        Intake.intakeBall(1);
 
+        Sorter.stopTransfer();
         ElapsedTime timeout = new ElapsedTime();
         while (opModeIsActive() && detectedBalls < 3 && timeout.seconds() < 8.0) {
-            Flywheel.update();
-            Sorter.update();
+            Flywheel.update(0.02);
+            Sorter.updateSlew();
 
             String color = Color.getColor();
             boolean detected = (color != null);
 
-            // Rising edge: no ball last loop, ball this loop
             if (detected && !lastDetected) {
                 detectedBalls++;
-                Sorter.updatePorts(color);
-                if (detectedBalls < 3) {
-                    Sorter.turn(1);
-                }
+                Sorter.commitBall("unknown");
                 telemetry.addData("Balls Detected", detectedBalls);
                 telemetry.update();
             }
@@ -183,6 +186,7 @@ public abstract class AutoBase extends LinearOpMode {
         int detectedBalls = 0;
         boolean lastDetected = false;
         Intake.intakeBall(0.8);
+        Sorter.stopTransfer();
 
         ElapsedTime timeout = new ElapsedTime();
 
@@ -200,19 +204,16 @@ public abstract class AutoBase extends LinearOpMode {
             boolean atEnd = MathFunctions.distance(worldPose.getPoint(), endPose.getPoint()) < 2
                     && Math.abs(MathFunctions.angleWrap(endPose.getR() - worldPose.getR())) < Math.toRadians(3);
 
-            Flywheel.update();
-            Sorter.update();
+            Flywheel.update(0.02);
+            Sorter.updateSlew();
 
-            // Ball detection
+            // Ball detection (no color sorting)
             String color = Color.getColor();
             boolean detected = (color != null);
 
             if (detected && !lastDetected) {
                 detectedBalls++;
-                Sorter.updatePorts(color);
-                if (detectedBalls < 3) {
-                    Sorter.turn(1);
-                }
+                Sorter.commitBall("unknown");
                 telemetry.addData("Balls Detected", detectedBalls);
                 telemetry.update();
             }
@@ -236,21 +237,19 @@ public abstract class AutoBase extends LinearOpMode {
         int detectedBalls = 0;
         boolean lastDetected = false;
         Intake.intakeBall(0.8);
+        Sorter.stopTransfer();
 
         ElapsedTime timeout = new ElapsedTime();
         while (opModeIsActive() && detectedBalls < ballCount && timeout.seconds() < 15.0) {
-            Flywheel.update();
-            Sorter.update();
+            Flywheel.update(0.02);
+            Sorter.updateSlew();
 
             String color = Color.getColor();
             boolean detected = (color != null);
 
             if (detected && !lastDetected) {
                 detectedBalls++;
-                Sorter.updatePorts(color);
-                if (detectedBalls < ballCount) {
-                    Sorter.turn(1);
-                }
+                Sorter.commitBall("unknown");
                 telemetry.addData("Balls Fed", detectedBalls + "/" + ballCount);
                 telemetry.update();
             }

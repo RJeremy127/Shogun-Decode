@@ -107,7 +107,7 @@ public class Odometry {
         deltas = encoder_delta;
         double threshold = 0.01;
         double encoderLeft = -encoder_delta[LEFT];
-        double backEncoder = -encoder_delta[BACK];
+        double backEncoder =  encoder_delta[BACK];
         double encoderRight = encoder_delta[RIGHT];
         // I swapped these because I want axes to be centered on bot facing up
         double delta_middle = (encoderLeft+ encoderRight) /2;// amount it turned minus amount turned in circle
