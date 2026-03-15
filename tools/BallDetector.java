@@ -16,7 +16,7 @@ public class BallDetector {
         public static double cs1ThresholdMm = 8;
         public static boolean useCS2Distance = false;
         public static double cs2ThresholdMm = 8;
-        public static double startupDelayMs = 2000;
+        public static double startupDelayMs = 3000;
         public static double analogSettleDelayMs = 150;
     }
 
